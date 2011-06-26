@@ -36,8 +36,8 @@ application = profiler.ProfilerWSGIMiddleware(application)
 </pre>
 5. You're all set! Just choose the users for whom you'd like to enable profiling in `gae_mini_profiler/config.py`:
 <pre>
-# If using the default should_profile implementation, the profiler
-# will only be enabled for requests made by the following GAE users.
+&#35; If using the default should_profile implementation, the profiler
+&#35; will only be enabled for requests made by the following GAE users.
 enabled_profiler_emails = [
     "kamens@gmail.com",
 ]
