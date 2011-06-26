@@ -62,7 +62,7 @@ enabled_profiler_emails = [
 ## <a name="features">Features</a>
 
 * Production profiling without impacting normal users
-* Easily profiler all requests, including ajax calls
+* Easily profile all requests, including ajax calls
 * Share individual profile results with others by sending link
 * Duplicate RPC calls are flagged for easy spotting in case you're repeating memcache or datastore queries.
 * Quickly sort and examine profiler stats and call stacks
