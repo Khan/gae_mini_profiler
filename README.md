@@ -15,8 +15,7 @@ This project was heavily inspired by [mvc-mini-profiler](http://code.google.com/
 <pre>
 handlers:
 &ndash; url: /gae_mini_profiler/static
-&nbsp;&nbsp;static_dir: gae_mini_profiler/static
-<br/>
+&nbsp;&nbsp;static_dir: gae_mini_profiler/static<br/>
 &ndash; url: /gae_mini_profiler/.*
 &nbsp;&nbsp;script: gae_mini_profiler/main.py
 </pre>
