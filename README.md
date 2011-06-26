@@ -6,11 +6,17 @@ This project is heavily inspired by the impressive [mvc-mini-profiler](http://co
 
 gae_mini_profiler is [MIT licensed](http://en.wikipedia.org/wiki/MIT_License).
 
-## Demo
+* <a href="#demo">Demo</a>  
+* <a href="#screens">Screenshots</a>  
+* <a href="#start">Getting Started</a>  
+* <a href="#features">Features</a>  
+* <a href="#bonus">Bonus</a>  
+
+## <a name="demo">Demo</a>
 
 You can play around with one of GAE's sample applications with gae_mini_profiler enabled for all users via [http://gae-mini-profiler.appspot.com](http://gae-mini-profiler.appspot.com/).
 
-## Screenshots
+## <a name="screens">Screenshots</a>
 
 <img src="http://gae-mini-profiler.appspot.com/images/gae-mini-profiler/corner.png"/><br/><em>All profiled pages have total milliseconds in corner, which can be expanded...</em><br/><br/>
 <img src="http://gae-mini-profiler.appspot.com/images/gae-mini-profiler/expanded.png"/><br/><em>...to show more details...</em><br/><br/>
@@ -18,7 +24,7 @@ You can play around with one of GAE's sample applications with gae_mini_profiler
 <img src="http://gae-mini-profiler.appspot.com/images/gae-mini-profiler/profile.png"/><br/><em>...or standard profiler output.</em><br/><br/>
 <img src="http://gae-mini-profiler.appspot.com/images/gae-mini-profiler/ajax-corner.png?test"/><br/><em>Ajax requests are also profiled and details made available as they are received.</em>
 
-## Getting Started
+## <a name="start">Getting Started</a>
 
 1. Download this repository's source and copy the `gae_mini_profiler/` folder into your App Engine project's root directory.
 2. Add the following two handler definitions to `app.yaml`:
@@ -53,13 +59,14 @@ enabled_profiler_emails = [
 ]
 </pre>
 
-## Features
+## <a name="features">Features</a>
 
 * Production profiling without impacting normal users
+* Easily profiler all requests, including ajax calls
 * Share individual profile results with others by sending link
 * Duplicate RPC calls are flagged for easy spotting in case you're repeating memcache or datastore queries.
-* Easily sort profiler stats
+* Quickly sort and examine profiler stats and call stacks
 
-## Bonus
+## <a name="bonus">Bonus</a>
 
 gae_mini_profiler is currently in production use at Khan Academy (http://khanacademy.org). If you make find good use of it elsewhere, be sure to let me know.
