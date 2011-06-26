@@ -8,7 +8,15 @@ gae_mini_profiler is [MIT licensed](http://en.wikipedia.org/wiki/MIT_License).
 
 ## Screenshots
 
-...go here...
+<img src="http://gae-mini-profiler.appspot.com/images/gae-mini-profiler/corner.png"/><br/><em>All profiled pages have total milliseconds in corner, which can be expanded...</em>
+
+<img src="http://gae-mini-profiler.appspot.com/images/gae-mini-profiler/expanded.png"/><br/><em>...to show more details about either...</em>
+
+<img src="http://gae-mini-profiler.appspot.com/images/gae-mini-profiler/rpc.png"/><br/><em>...remote procedure call performance...</em>
+
+<img src="http://gae-mini-profiler.appspot.com/images/gae-mini-profiler/profile.png"/><br/><em>...or standard profiler output.</em>
+
+<img src="http://gae-mini-profiler.appspot.com/images/gae-mini-profiler/ajax-corner.png"/><br/><em>Ajax requests are also profiled and details made available as they are received.</em>
 
 ## Getting Started
 
