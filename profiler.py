@@ -72,6 +72,7 @@ class RequestStats(object):
     @staticmethod
     def get(request_id):
         if request_id:
+
             compressed_pickled = memcache.get(RequestStats.memcache_key(request_id))
 
             if compressed_pickled:
@@ -246,7 +247,7 @@ class ProfilerWSGIMiddleware(object):
             # Set a random ID for this request so we can look up stats later
             import base64
             import os
-            request_id = base64.b64encode(os.urandom(30))
+            request_id = base64.urlsafe_b64encode(os.urandom(15))
 
             # Send request id in headers so jQuery ajax calls can pick
             # up profiles.
