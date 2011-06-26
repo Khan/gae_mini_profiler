@@ -21,10 +21,10 @@ handlers:
 </pre>
 3. Modify the WSGI application you want to profile by wrapping it with the gae_mini_profiler WSGI application:
 <pre>
-&pound; Example of existing application
+&#35; Example of existing application
 application = webapp.WSGIApplication(...existing application...)
 
-&pound; Add the following
+&#35; Add the following
 from gae_mini_profiler import profiler
 application = profiler.ProfilerWSGIMiddleware(application)
 </pre>
