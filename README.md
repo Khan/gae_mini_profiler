@@ -4,6 +4,8 @@ gae_mini_profiler is a quick drop-in WSGI app for your existing GAE projects. It
 
 This project was heavily inspired by [mvc-mini-profiler](http://code.google.com/p/mvc-mini-profiler/).
 
+gae_mini_profiler is [MIT licensed](http://en.wikipedia.org/wiki/MIT_License).
+
 ## Screenshots
 
 ...go here...
@@ -48,3 +50,7 @@ enabled_profiler_emails = [
 * Production profiling
 * No performance impact for normal users
 * Share with others
+
+## Bonus
+
+gae_mini_profiler is currently in production use at Khan Academy (http://khanacademy.org). If you make find good use of it elsewhere, be sure to let me know.
