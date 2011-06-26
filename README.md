@@ -63,6 +63,7 @@ enabled_profiler_emails = [
 
 * Production profiling without impacting normal users
 * Easily profile all requests, including ajax calls
+* Summaries of RPC call types and their performance so you can quickly figure out whether datastore, memcache, or urlfetch is your bottleneck
 * Share individual profile results with others by sending link
 * Duplicate RPC calls are flagged for easy spotting in case you're repeating memcache or datastore queries.
 * Quickly sort and examine profiler stats and call stacks
