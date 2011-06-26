@@ -16,7 +16,7 @@ gae_mini_profiler is [MIT licensed](http://en.wikipedia.org/wiki/MIT_License).
 
 <img src="http://gae-mini-profiler.appspot.com/images/gae-mini-profiler/profile.png"/><br/><em>...or standard profiler output.</em>
 
-<img src="http://gae-mini-profiler.appspot.com/images/gae-mini-profiler/ajax-corner.png"/><br/><em>Ajax requests are also profiled and details made available as they are received.</em>
+<img src="http://gae-mini-profiler.appspot.com/images/gae-mini-profiler/ajax-corner.png?test"/><br/><em>Ajax requests are also profiled and details made available as they are received.</em>
 
 ## Getting Started
 
