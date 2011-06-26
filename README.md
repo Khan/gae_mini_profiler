@@ -8,10 +8,10 @@ gae_mini_profiler is [MIT licensed](http://en.wikipedia.org/wiki/MIT_License).
 
 ## Screenshots
 
-<img src="http://gae-mini-profiler.appspot.com/images/gae-mini-profiler/corner.png"/><br/><em>All profiled pages have total milliseconds in corner, which can be expanded...</em><br/>
-<img src="http://gae-mini-profiler.appspot.com/images/gae-mini-profiler/expanded.png"/><br/><em>...to show more details...</em><br/>
-<img src="http://gae-mini-profiler.appspot.com/images/gae-mini-profiler/rpc.png"/><br/><em>...about remote procedure call performance...</em><br/>
-<img src="http://gae-mini-profiler.appspot.com/images/gae-mini-profiler/profile.png"/><br/><em>...or standard profiler output.</em><br/>
+<img src="http://gae-mini-profiler.appspot.com/images/gae-mini-profiler/corner.png"/><br/><em>All profiled pages have total milliseconds in corner, which can be expanded...</em><br/><br/>
+<img src="http://gae-mini-profiler.appspot.com/images/gae-mini-profiler/expanded.png"/><br/><em>...to show more details...</em><br/><br/>
+<img src="http://gae-mini-profiler.appspot.com/images/gae-mini-profiler/rpc.png"/><br/><em>...about remote procedure call performance...</em><br/><br/>
+<img src="http://gae-mini-profiler.appspot.com/images/gae-mini-profiler/profile.png"/><br/><em>...or standard profiler output.</em><br/><br/>
 <img src="http://gae-mini-profiler.appspot.com/images/gae-mini-profiler/ajax-corner.png?test"/><br/><em>Ajax requests are also profiled and details made available as they are received.</em>
 
 ## Getting Started
@@ -51,9 +51,10 @@ enabled_profiler_emails = [
 
 ## Features
 
-* Production profiling
-* No performance impact for normal users
-* Share with others
+* Production profiling without impacting normal users
+* Share individual profile results with others by sending link
+* Duplicate RPC calls are flagged for easy spotting in case you're repeating memcache or datastore queries.
+* Easily sort profiler stats
 
 ## Bonus
 
