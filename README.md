@@ -13,10 +13,37 @@ This project was heavily inspired by [mvc-mini-profiler](http://code.google.com/
 1. Download this repository's source and copy the `gae_mini_profiler/` folder into your App Engine project's root directory.
 2. Add the following two handler definitions to `app.yaml`:
 <pre>
+handlers:
+- url: /gae_mini_profiler/static
+  static_dir: gae_mini_profiler/static
 
+- url: /gae_mini_profiler/.*
+  script: gae_mini_profiler/main.py
 </pre>
-3. Add WSGI application
-4. Insert template tag below jQuery somewhere
+3. Modify the WSGI application you want to profile by wrapping it with the gae_mini_profiler WSGI application:
+<pre>
+# Example of existing application
+application = webapp.WSGIApplication(...existing application...)
+
+# Add the following
+from gae_mini_profiler import profiler
+application = profiler.ProfilerWSGIMiddleware(application)
+</pre>
+4. Insert the `profiler_includes` template tag below jQuery somewhere (preferably at the end of your template):
+<pre>
+        ...your html...
+        {% profiler_includes %}
+    &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+5. You're all set! Just choose the users for whom you'd like to enable profiling in `gae_mini_profiler/config.py`:
+<pre>
+# If using the default should_profile implementation, the profiler
+# will only be enabled for requests made by the following GAE users.
+enabled_profiler_emails = [
+    "kamens@gmail.com",
+]
+</pre>
 
 ## Features
 
