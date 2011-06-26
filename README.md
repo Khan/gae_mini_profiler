@@ -1,8 +1,8 @@
 # Google App Engine Mini Profiler
 
-gae_mini_profiler is a quick drop-in WSGI app for your existing GAE projects. It exposes both AppStats and cProfile statistics for users of your choosing on your production site. Only requests coming from users of your choosing will be profiled, and others will not suffer any performance degradation. See screenshots and features below.
+gae_mini_profiler is a quick drop-in WSGI app that provides ubiquitous profiling of your existing GAE projects. It exposes both AppStats and cProfile statistics for users of your choosing on your production site. Only requests coming from users of your choosing will be profiled, and others will not suffer any performance degradation. See screenshots and features below.
 
-This project is heavily inspired by the impressive [mvc-mini-profiler](http://code.google.com/p/mvc-mini-profiler/).
+This project is heavily inspired by the impressive [mvc-mini-profiler](http://code.google.com/p/mvc-mini-profiler/). You can play around with an example GAE application that has gae_mini_profiler enabled for all users at [http://gae-mini-profiler.appspot.com](http://gae-mini-profiler.appspot.com/).
 
 gae_mini_profiler is [MIT licensed](http://en.wikipedia.org/wiki/MIT_License).
 
