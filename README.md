@@ -15,10 +15,10 @@ This project was heavily inspired by [mvc-mini-profiler](http://code.google.com/
 <pre>
 handlers:
 &ndash; url: /gae_mini_profiler/static
-  static_dir: gae_mini_profiler/static
-
+&nbsp;&nbsp;static_dir: gae_mini_profiler/static
+<br/>
 &ndash; url: /gae_mini_profiler/.*
-  script: gae_mini_profiler/main.py
+&nbsp;&nbsp;script: gae_mini_profiler/main.py
 </pre>
 3. Modify the WSGI application you want to profile by wrapping it with the gae_mini_profiler WSGI application:
 <pre>
