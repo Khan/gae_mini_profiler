@@ -13,12 +13,12 @@ This project was heavily inspired by [mvc-mini-profiler](http://code.google.com/
 1. Download this repository's source and copy the `gae_mini_profiler/` folder into your App Engine project's root directory.
 2. Add the following two handler definitions to `app.yaml`:
 <pre>
-handlers:
-- url: /gae_mini_profiler/static
-  static_dir: gae_mini_profiler/static
+  handlers:
+    - url: /gae_mini_profiler/static
+    static_dir: gae_mini_profiler/static
 
-- url: /gae_mini_profiler/.*
-  script: gae_mini_profiler/main.py
+    - url: /gae_mini_profiler/.*
+    script: gae_mini_profiler/main.py
 </pre>
 3. Modify the WSGI application you want to profile by wrapping it with the gae_mini_profiler WSGI application:
 <pre>
