@@ -20,9 +20,15 @@ class SharedStatsHandler(RequestHandler):
 
     def get(self):
         path = os.path.join(os.path.dirname(__file__), "templates/shared.html")
+
+        request_id = self.request.get("request_id")
+        if not RequestStats.get(request_id):
+            self.response.out.write("Profiler stats no longer exist for this request.")
+            return
+
         self.response.out.write(
             template.render(path, {
-                "request_id": self.request.get("request_id")
+                "request_id": request_id
             })
         )
 
