@@ -85,6 +85,10 @@
     color: #CCC;
 }
 
+.g-m-p .appstats-link {
+    float:right;
+}
+
 .g-m-p .url {
     font-size: 125%;
 }

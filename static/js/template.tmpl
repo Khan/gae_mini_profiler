@@ -21,7 +21,6 @@
         <div class="date_and_share">
             <span class="date">${s_dt}</span>
             - <a class="share" href="/gae_mini_profiler/shared?request_id=${encodeURIComponent(request_id)}">Share</a>
-            - <a class="share" target="_appstats" href="/_ah/stats/details?time=${appstats_results.appstats_key}">Appstats</a>
         </div>
 
         <div class="expand">
@@ -91,6 +90,9 @@
         </div>
 
         <div class="rpc-details details fancy-scrollbar" style="display:none;">
+
+            <a class="appstats-link" target="_appstats" href="/_ah/stats/details?time=${appstats_results.appstats_key}">Full Appstats Details</a>
+
             {{if appstats_results.calls.length}}
             <table class="rpc-service-totals">
                 <thead>
