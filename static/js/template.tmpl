@@ -91,6 +91,7 @@
         </div>
 
         <div class="rpc-details details fancy-scrollbar" style="display:none;">
+            {{if appstats_results.calls.length}}
             <table class="rpc-service-totals">
                 <thead>
                     <tr>
@@ -146,6 +147,7 @@
                 </tr>
                 {{/each}}
             </table>
+            {{/if}}
         </div>
 
     </div>
