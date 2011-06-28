@@ -165,6 +165,8 @@ class RequestStats(object):
 
             dict_requests = {}
 
+            appstats_key = long(middleware.recorder.start_timestamp * 1000)
+
             for trace in middleware.recorder.traces:
                 total_call_count += 1
                 total_time += trace.duration_milliseconds()
@@ -225,6 +227,7 @@ class RequestStats(object):
                         "calls": calls,
                         "service_totals": service_totals,
                         "likely_dupes": likely_dupes,
+                        "appstats_key": appstats_key,
                     }
 
         return None
