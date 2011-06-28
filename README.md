@@ -82,7 +82,7 @@ gae_mini_profiler is currently in production use at Khan Academy (http://khanaca
 2. I had my appstats_RECORD_FRACTION variable set to 0.1, which means only 10% of my queries where getting profiles generated.  This meant that most of the time gae_mini_profiler was failing with a javascript error, because the appstats variable was null.
 
     If you are using appengine_config.py to customize Appstats behavior you should add this to the top of your "appstats_should_record" method.  
-<pre>    def appstats_should_record(env):
+<pre>def appstats_should_record(env):
         from gae_mini_profiler.config import should_profile
         if should_profile(env):
             return True
