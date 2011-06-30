@@ -14,6 +14,10 @@ enable_profiler_admins = True
 def should_profile(environ):
     user = users.get_current_user()
 
+	# Never profile calls to the profiler itself to avoid endless recursion.
+	if environ["PATH_INFO"].startswith("/gae_mini_profiler/"):
+		return False
+
     if enable_profiler_admins and users.is_current_user_admin():
         return True
 

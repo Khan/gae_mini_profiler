@@ -75,11 +75,7 @@ gae_mini_profiler is currently in production use at Khan Academy (http://khanaca
 
 ## <a name="faq">FAQ</a>
 
-1. I added the profiler middleware in my appengine_config.py file, and I'm seeing recursive profiling strangeness.
-
-    Don't add the profiler middleware in your appengine_config.py file ;). Add it in your main() or wherever you call run_wsgi_app or its equivalent.
-
-2. I had my appstats_RECORD_FRACTION variable set to 0.1, which means only 10% of my queries where getting profiles generated.  This meant that most of the time gae_mini_profiler was failing with a javascript error, because the appstats variable was null.
+1. I had my appstats_RECORD_FRACTION variable set to 0.1, which means only 10% of my queries where getting profiles generated.  This meant that most of the time gae_mini_profiler was failing with a javascript error, because the appstats variable was null.
 
     If you are using appengine_config.py to customize Appstats behavior you should add this to the top of your "appstats_should_record" method.  
 <pre>def appstats_should_record(env):
