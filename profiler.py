@@ -158,10 +158,11 @@ class RequestStats(object):
         if middleware.recorder:
 
             total_call_count = 0
-            total_time = int(1000 * (middleware.recorder.end_timestamp - middleware.recorder.start_timestamp))
+            total_time = 0
             calls = []
             service_totals_dict = {}
             likely_dupes = False
+            end_offset_last = 0
 
             dict_requests = {}
 
@@ -169,6 +170,13 @@ class RequestStats(object):
 
             for trace in middleware.recorder.traces:
                 total_call_count += 1
+
+                total_time += trace.duration_milliseconds()
+
+                # Don't accumulate total RPC time for traces that overlap asynchronously
+                if trace.start_offset_milliseconds() < end_offset_last:
+                    total_time -= (end_offset_last - trace.start_offset_milliseconds())
+                end_offset_last = trace.start_offset_milliseconds() + trace.duration_milliseconds()
 
                 service_prefix = trace.service_call_name()
 
