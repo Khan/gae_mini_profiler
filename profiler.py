@@ -2,6 +2,7 @@ import datetime
 import logging
 import os
 import pickle
+import re
 import simplejson
 import StringIO
 import sys
@@ -38,19 +39,37 @@ class RequestStatsHandler(RequestHandler):
 
         self.response.headers["Content-Type"] = "application/json"
 
-        request_stats = RequestStats.get(self.request.get("request_id"))
-        if not request_stats:
-            return
+        list_request_ids = []
 
-        dict_request_stats = {}
-        for property in RequestStats.serialized_properties:
-            dict_request_stats[property] = request_stats.__getattribute__(property)
+        request_ids = self.request.get("request_ids")
+        if request_ids:
+            list_request_ids = request_ids.split(",")
 
-        self.response.out.write(simplejson.dumps(dict_request_stats))
+        list_request_stats = []
+
+        for request_id in list_request_ids:
+
+            request_stats = RequestStats.get(request_id)
+
+            if request_stats and not request_stats.disabled:
+
+                dict_request_stats = {}
+                for property in RequestStats.serialized_properties:
+                    dict_request_stats[property] = request_stats.__getattribute__(property)
+
+                list_request_stats.append(dict_request_stats)
+
+                # Don't show temporary redirect profiles more than once automatically, as they are
+                # tied to URL params and may be copied around easily.
+                if request_stats.temporary_redirect:
+                    request_stats.disabled = True
+                    request_stats.store()
+
+        self.response.out.write(simplejson.dumps(list_request_stats))
 
 class RequestStats(object):
 
-    serialized_properties = ["request_id", "url", "url_short", "s_dt", "profiler_results", "appstats_results"]
+    serialized_properties = ["request_id", "url", "url_short", "s_dt", "profiler_results", "appstats_results", "temporary_redirect"]
 
     def __init__(self, request_id, environ, middleware):
         self.request_id = request_id
@@ -67,6 +86,9 @@ class RequestStats(object):
 
         self.profiler_results = RequestStats.calc_profiler_results(middleware)
         self.appstats_results = RequestStats.calc_appstats_results(middleware)
+
+        self.temporary_redirect = middleware.temporary_redirect
+        self.disabled = False
 
     def store(self):
         # Store compressed results so we stay under the memcache 1MB limit
@@ -247,6 +269,7 @@ class ProfilerWSGIMiddleware(object):
         self.app_clean = app
         self.prof = None
         self.recorder = None
+        self.temporary_redirect = False
 
     def __call__(self, environ, start_response):
 
@@ -257,18 +280,29 @@ class ProfilerWSGIMiddleware(object):
         self.app = self.app_clean
         self.prof = None
         self.recorder = None
+        self.temporary_redirect = False
 
         if config.should_profile(environ):
 
             # Set a random ID for this request so we can look up stats later
             import base64
             import os
-            request_id = base64.urlsafe_b64encode(os.urandom(15))
+            request_id = base64.urlsafe_b64encode(os.urandom(5))
 
             # Send request id in headers so jQuery ajax calls can pick
             # up profiles.
             def profiled_start_response(status, headers, exc_info = None):
+
+                if status.startswith("302 "):
+                    # Temporary redirect. Add request identifier to redirect location
+                    # so next rendered page can show this request's profile.
+                    headers = ProfilerWSGIMiddleware.headers_with_modified_redirect(environ, headers)
+                    self.temporary_redirect = True
+
+                # Append headers used when displaying profiler results from ajax requests
                 headers.append(("X-MiniProfiler-Id", request_id))
+                headers.append(("X-MiniProfiler-QS", environ.get("QUERY_STRING")))
+
                 return start_response(status, headers, exc_info)
 
             # Configure AppStats output, keeping a high level of request
@@ -318,3 +352,32 @@ class ProfilerWSGIMiddleware(object):
             result = self.app(environ, start_response)
             for value in result:
                 yield value
+
+    @staticmethod
+    def headers_with_modified_redirect(environ, headers):
+        headers_modified = []
+
+        for header in headers:
+            if header[0] == "Location":
+                reg = re.compile("mp-r-id=([^&]+)")
+
+                # Keep any chain of redirects around
+                request_id_chain = request_id
+                match = reg.search(environ.get("QUERY_STRING"))
+                if match:
+                    request_id_chain = ",".join([match.groups()[0], request_id])
+
+                # Remove any pre-existing miniprofiler redirect id
+                location = header[1]
+                location = reg.sub("", location)
+
+                # Add current request id as miniprofiler redirect id
+                location += ("&" if "?" in location else "?")
+                location = location.replace("&&", "&")
+                location += "mp-r-id=%s" % request_id_chain
+
+                headers_modified.append((header[0], location))
+            else:
+                headers_modified.append(header)
+
+        return headers_modified

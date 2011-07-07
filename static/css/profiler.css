@@ -93,6 +93,11 @@
     font-size: 125%;
 }
 
+.g-m-p .redirect {
+    float: left;
+    color: #444;
+}
+
 .g-m-p .total {
     float: right;
 }

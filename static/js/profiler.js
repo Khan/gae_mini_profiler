@@ -8,18 +8,36 @@ var GaeMiniProfiler = {
             if (xhr) {
                 var requestId = xhr.getResponseHeader('X-MiniProfiler-Id');
                 if (requestId) {
-                    GaeMiniProfiler.fetch(requestId);
+                    var queryString = xhr.getResponseHeader('X-MiniProfiler-QS');
+                    GaeMiniProfiler.fetch(requestId, queryString);
                 }
             }
         });
 
-        GaeMiniProfiler.fetch(requestId, fShowImmediately);
+        GaeMiniProfiler.fetch(requestId, window.location.search, fShowImmediately);
     },
 
-    fetch: function(requestId, fShowImmediately) {
+    appendRedirectIds: function(requestId, queryString) {
+        if (queryString) {
+            var re = /mp-r-id=([^&]+)/;
+            var matches = re.exec(queryString);
+            if (matches && matches.length) {
+                var sRedirectIds = matches[1];
+                var list = sRedirectIds.split(",");
+                list[list.length] = requestId;
+                return list;
+            }
+        }
+
+        return [requestId];
+    },
+
+    fetch: function(requestId, queryString, fShowImmediately) {
+        var requestIds = this.appendRedirectIds(requestId, queryString);
+
         $.get(
                 "/gae_mini_profiler/request",
-                { "request_id": requestId },
+                { "request_ids": requestIds.join(",") },
                 function(data) {
                     GaeMiniProfilerTemplate.init(function() { GaeMiniProfiler.finishFetch(data, fShowImmediately); });
                 },
@@ -28,18 +46,24 @@ var GaeMiniProfiler = {
     },
 
     finishFetch: function(data, fShowImmediately) {
-        var jCorner = this.renderCorner(data);
+        if (!data || !data.length) return;
 
-        if (!jCorner.data("attached")) {
-            $('body')
-                .append(jCorner)
-                .click(function(e) { return GaeMiniProfiler.collapse(e); });
-            jCorner
-                .data("attached", true);
+        for (var ix = 0; ix < data.length; ix++) {
+
+            var jCorner = this.renderCorner(data[ix]);
+
+            if (!jCorner.data("attached")) {
+                $('body')
+                    .append(jCorner)
+                    .click(function(e) { return GaeMiniProfiler.collapse(e); });
+                jCorner
+                    .data("attached", true);
+            }
+
+            if (fShowImmediately)
+                jCorner.find(".entry").first().click();
+
         }
-
-        if (fShowImmediately)
-            jCorner.find(".entry").first().click();
     },
 
     collapse: function(e) {
