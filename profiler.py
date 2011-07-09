@@ -131,7 +131,9 @@ class RequestStats(object):
     def short_rpc_file_fmt(s):
         if not s:
             return ""
-        return s[s.find("/"):]
+        if "/" in s:
+            return s[s.find("/"):]
+        return s
 
     @staticmethod
     def calc_profiler_results(middleware):
