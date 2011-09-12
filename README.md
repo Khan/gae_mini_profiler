@@ -72,7 +72,7 @@ enabled_profiler_emails = [
 
 ## <a name="bonus">Bonus</a>
 
-gae_mini_profiler is currently in production use at Khan Academy (http://khanacademy.org). If you make find good use of it elsewhere, be sure to let me know.
+gae_mini_profiler is currently in production use at Khan Academy (http://khanacademy.org). If you make good use of it elsewhere, be sure to let me know.
 
 ## <a name="faq">FAQ</a>
 
