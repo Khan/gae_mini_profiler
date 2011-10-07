@@ -316,7 +316,12 @@ class ProfilerWSGIMiddleware(object):
             old_app = self.app
             def wrapped_appstats_app(environ, start_response):
                 # Use this wrapper to grab the app stats recorder for RequestStats.save()
-                self.recorder = recording.recorder
+
+                if hasattr(recording.recorder, "get_for_current_request"):
+                    self.recorder = recording.recorder.get_for_current_request()
+                else:
+                    self.recorder = recording.recorder
+
                 return old_app(environ, start_response)
             self.app = recording.appstats_wsgi_middleware(wrapped_appstats_app)
 
