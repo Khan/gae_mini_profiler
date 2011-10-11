@@ -1,11 +1,9 @@
 import datetime
-import logging
 import os
 import pickle
 import re
 import simplejson
 import StringIO
-import sys
 from types import GeneratorType
 import zlib
 
@@ -16,6 +14,7 @@ from gae_mini_profiler import config
 
 # request_id is a per-request identifier accessed by a couple other pieces of gae_mini_profiler
 request_id = None
+
 
 class SharedStatsHandler(RequestHandler):
 
@@ -32,6 +31,7 @@ class SharedStatsHandler(RequestHandler):
                 "request_id": request_id
             })
         )
+
 
 class RequestStatsHandler(RequestHandler):
 
@@ -66,6 +66,7 @@ class RequestStatsHandler(RequestHandler):
                     request_stats.store()
 
         self.response.out.write(simplejson.dumps(list_request_stats))
+
 
 class RequestStats(object):
 
@@ -158,15 +159,15 @@ class RequestStats(object):
 
             callers_names = map(lambda func_name: pstats.func_std_string(func_name), callers.keys())
             callers_desc = map(
-                    lambda name: {"func_desc": name, "func_desc_short": RequestStats.short_method_fmt(name)}, 
+                    lambda name: {"func_desc": name, "func_desc_short": RequestStats.short_method_fmt(name)},
                     callers_names)
 
             results["calls"].append({
-                "primitive_call_count": primitive_call_count, 
-                "total_call_count": total_call_count, 
-                "total_time": RequestStats.seconds_fmt(total_time), 
+                "primitive_call_count": primitive_call_count,
+                "total_call_count": total_call_count,
+                "total_time": RequestStats.seconds_fmt(total_time),
                 "per_call": RequestStats.seconds_fmt(total_time / total_call_count) if total_call_count else "",
-                "cumulative_time": RequestStats.seconds_fmt(cumulative_time), 
+                "cumulative_time": RequestStats.seconds_fmt(cumulative_time),
                 "per_call_cumulative": RequestStats.seconds_fmt(cumulative_time / primitive_call_count) if primitive_call_count else "",
                 "func_desc": func_desc,
                 "func_desc_short": RequestStats.short_method_fmt(func_desc),
@@ -176,7 +177,7 @@ class RequestStats(object):
         output.close()
 
         return results
-        
+
     @staticmethod
     def calc_appstats_results(middleware):
         if middleware.recorder:
@@ -207,7 +208,7 @@ class RequestStats(object):
                 if "." in service_prefix:
                     service_prefix = service_prefix[:service_prefix.find(".")]
 
-                if not service_totals_dict.has_key(service_prefix):
+                if service_prefix not in service_totals_dict:
                     service_totals_dict[service_prefix] = {"total_call_count": 0, "total_time": 0}
 
                 service_totals_dict[service_prefix]["total_call_count"] += 1
@@ -215,9 +216,9 @@ class RequestStats(object):
 
                 stack_frames_desc = []
                 for frame in trace.call_stack_:
-                    stack_frames_desc.append("%s:%s %s" % 
-                            (RequestStats.short_rpc_file_fmt(frame.class_or_file_name()), 
-                                frame.line_number(), 
+                    stack_frames_desc.append("%s:%s %s" %
+                            (RequestStats.short_rpc_file_fmt(frame.class_or_file_name()),
+                                frame.line_number(),
                                 frame.function_name()))
 
                 request = trace.request_data_summary()
@@ -225,7 +226,7 @@ class RequestStats(object):
                 if len(request_short) > 100:
                     request_short = request_short[:100] + "..."
 
-                likely_dupe = dict_requests.has_key(request)
+                likely_dupe = request in dict_requests
                 likely_dupes = likely_dupes or likely_dupe
 
                 dict_requests[request] = True
@@ -263,6 +264,7 @@ class RequestStats(object):
 
         return None
 
+
 class ProfilerWSGIMiddleware(object):
 
     def __init__(self, app):
@@ -293,7 +295,7 @@ class ProfilerWSGIMiddleware(object):
 
             # Send request id in headers so jQuery ajax calls can pick
             # up profiles.
-            def profiled_start_response(status, headers, exc_info = None):
+            def profiled_start_response(status, headers, exc_info=None):
 
                 if status.startswith("302 "):
                     # Temporary redirect. Add request identifier to redirect location
@@ -314,6 +316,7 @@ class ProfilerWSGIMiddleware(object):
 
             # Turn on AppStats monitoring for this request
             old_app = self.app
+
             def wrapped_appstats_app(environ, start_response):
                 # Use this wrapper to grab the app stats recorder for RequestStats.save()
 

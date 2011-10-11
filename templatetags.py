@@ -1,4 +1,3 @@
-import logging
 import simplejson
 import os
 
@@ -9,8 +8,9 @@ from gae_mini_profiler import profiler
 
 register = webapp.template.create_template_register()
 
+
 @register.simple_tag
-def profiler_includes_request_id(request_id, show_immediately = False):
+def profiler_includes_request_id(request_id, show_immediately=False):
     if not request_id:
         return ""
 
@@ -22,8 +22,7 @@ def profiler_includes_request_id(request_id, show_immediately = False):
         "show_immediately_js": simplejson.dumps(show_immediately),
     })
 
+
 @register.simple_tag
 def profiler_includes():
     return profiler_includes_request_id(profiler.request_id)
-
-
