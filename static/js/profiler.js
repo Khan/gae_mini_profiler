@@ -114,10 +114,15 @@ var GaeMiniProfiler = {
         if (!fWasVisible) {
             $(elLink).parents(".expand").addClass("expanded");
             $(selector).slideDown("fast", function() {
-                if (!GaeMiniProfiler.toggleSection["called_" + selector]) {
-                    $(selector + " table").tablesorter();
-                    GaeMiniProfiler.toggleSection["called_" + selector] = true;
+
+                var jTable = $(this).find("table");
+
+                if (jTable.length && !jTable.data("table-sorted")) {
+                    jTable
+                        .tablesorter()
+                        .data("table-sorted", true);
                 }
+
             });
         }
     },
