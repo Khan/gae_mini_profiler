@@ -75,7 +75,7 @@ enabled_profiler_emails = [
 ## <a name="dependencies">Dependencies</a>
 
 * jQuery must be included somewhere on your page.
-* (Optional) If you want the fancy slider selector (see below) for the Logs output, jQuery UI must also be included with its Slider plugin.
+* (Optional) If you want the fancy slider selector for the Logs output, jQuery UI must also be included with its Slider plugin.
 
 ## <a name="bonus">Bonus</a>
 
