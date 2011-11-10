@@ -19,12 +19,20 @@
                 ${profiler_results.total_time} <span class="ms">ms</span>
             </div>
         </div>
+
+        {{if simple_timing}}
+
+        <div class="simple-timing">Detailed timing information is disabled. <a href="#" class="toggle-enabled">Enable</a>.</div>
+
+        {{else}}
+
         <div class="date_and_share">
             {{if temporary_redirect}}
                 <span class="redirect" title="Temporary redirect">&#8623; (302 redirect)</span>
             {{/if}}
             <span class="date">${s_dt}</span>
             - <a class="share" href="/gae_mini_profiler/shared?request_id=${encodeURIComponent(request_id)}">Share</a>
+            - <a class="toggle-enabled" href="#">Off</a>
         </div>
 
         <div class="expand">
@@ -206,5 +214,6 @@ ${$value[5]}
                 {{/each}}
             </table>
         </div>
+        {{/if}}
     </div>
 </script>

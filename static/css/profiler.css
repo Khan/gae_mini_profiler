@@ -212,6 +212,11 @@
     margin: 0 10px 0 0;
 }
 
+.g-m-p div.simple-timing {
+    margin-top: 18px;
+    text-align: center;
+}
+
 .g-m-p .summary span.loglevel {
     margin: 0 .1em 0 .6em;
 }

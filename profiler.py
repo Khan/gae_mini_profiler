@@ -1,4 +1,5 @@
 import datetime
+import time
 import logging
 import os
 import pickle
@@ -14,6 +15,7 @@ from google.appengine.api import memcache
 import unformatter
 from pprint import pformat
 import cleanup
+import cookies
 
 import gae_mini_profiler.config
 if os.environ["SERVER_SOFTWARE"].startswith("Devel"):
@@ -77,7 +79,7 @@ class RequestStatsHandler(RequestHandler):
 class RequestStats(object):
 
     serialized_properties = ["request_id", "url", "url_short", "s_dt",
-                             "profiler_results", "appstats_results",
+                             "profiler_results", "appstats_results", "simple_timing",
                              "temporary_redirect", "logs"]
 
     def __init__(self, request_id, environ, middleware):
@@ -91,6 +93,7 @@ class RequestStats(object):
         if len(self.url_short) > 26:
             self.url_short = self.url_short[:26] + "..."
 
+        self.simple_timing = middleware.simple_timing
         self.s_dt = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         self.profiler_results = RequestStats.calc_profiler_results(middleware)
@@ -145,6 +148,12 @@ class RequestStats(object):
 
     @staticmethod
     def calc_profiler_results(middleware):
+
+        if middleware.simple_timing:
+            return {
+                "total_time": RequestStats.seconds_fmt(middleware.end - middleware.start),
+            }
+
         import pstats
 
         # Make sure nothing is printed to stdout
@@ -298,6 +307,10 @@ class ProfilerWSGIMiddleware(object):
         self.recorder = None
         self.temporary_redirect = False
         self.handler = None
+        self.logs = None
+        self.simple_timing = False
+        self.start = None
+        self.end = None
 
     def __call__(self, environ, start_response):
 
@@ -309,6 +322,7 @@ class ProfilerWSGIMiddleware(object):
         self.prof = None
         self.recorder = None
         self.temporary_redirect = False
+        self.simple_timing = cookies.get_cookie_value("g-m-p-disabled") == "1"
 
         # Never profile calls to the profiler itself to avoid endless recursion.
         if config.should_profile(environ) and not environ.get("PATH_INFO", "").startswith("/gae_mini_profiler/"):
@@ -316,8 +330,6 @@ class ProfilerWSGIMiddleware(object):
             # Set a random ID for this request so we can look up stats later
             import base64
             request_id = base64.urlsafe_b64encode(os.urandom(5))
-
-            self.add_handler()
 
             # Send request id in headers so jQuery ajax calls can pick
             # up profiles.
@@ -335,57 +347,72 @@ class ProfilerWSGIMiddleware(object):
 
                 return start_response(status, headers, exc_info)
 
-            # Configure AppStats output, keeping a high level of request
-            # content so we can detect dupe RPCs more accurately
+            if self.simple_timing:
 
-            # monkey patch appstats.formatting to fix string quoting bug
-            # see http://code.google.com/p/googleappengine/issues/detail?id=5976
-            import unformatter.formatting
-            import google.appengine.ext.appstats.formatting
-            google.appengine.ext.appstats.formatting._format_value = unformatter.formatting._format_value
+                # Detailed recording is disabled. Just track simple start/stop time.
+                self.start = time.clock()
 
-            from google.appengine.ext.appstats import recording
-            recording.config.MAX_REPR = 750
-
-            # Turn on AppStats monitoring for this request
-            old_app = self.app
-            def wrapped_appstats_app(environ, start_response):
-                # Use this wrapper to grab the app stats recorder for RequestStats.save()
-
-                if hasattr(recording.recorder, "get_for_current_request"):
-                    self.recorder = recording.recorder.get_for_current_request()
-                else:
-                    self.recorder = recording.recorder
-
-                return old_app(environ, start_response)
-            self.app = recording.appstats_wsgi_middleware(wrapped_appstats_app)
-
-            # Turn on cProfile profiling for this request
-            import cProfile
-            self.prof = cProfile.Profile()
-
-            # Get profiled wsgi result
-            result = self.prof.runcall(lambda *args, **kwargs: self.app(environ, profiled_start_response), None, None)
-
-            self.recorder = recording.recorder
-
-            # If we're dealing w/ a generator, profile all of the .next calls as well
-            if type(result) == GeneratorType:
-
-                while True:
-                    try:
-                        yield self.prof.runcall(result.next)
-                    except StopIteration:
-                        break
-
-            else:
+                result = self.app(environ, profiled_start_response)
                 for value in result:
                     yield value
 
-            self.logs = self.get_logs(self.handler)
-            logging.getLogger().removeHandler(self.handler)
-            self.handler.stream.close()
-            self.handler = None
+                self.end = time.clock()
+
+            else:
+
+                # Add logging handler
+                self.add_handler()
+
+                # Monkey patch appstats.formatting to fix string quoting bug
+                # See http://code.google.com/p/googleappengine/issues/detail?id=5976
+                import unformatter.formatting
+                import google.appengine.ext.appstats.formatting
+                google.appengine.ext.appstats.formatting._format_value = unformatter.formatting._format_value
+
+                # Configure AppStats output, keeping a high level of request
+                # content so we can detect dupe RPCs more accurately
+                from google.appengine.ext.appstats import recording
+                recording.config.MAX_REPR = 750
+
+                # Turn on AppStats monitoring for this request
+                old_app = self.app
+                def wrapped_appstats_app(environ, start_response):
+                    # Use this wrapper to grab the app stats recorder for RequestStats.save()
+
+                    if hasattr(recording.recorder, "get_for_current_request"):
+                        self.recorder = recording.recorder.get_for_current_request()
+                    else:
+                        self.recorder = recording.recorder
+
+                    return old_app(environ, start_response)
+                self.app = recording.appstats_wsgi_middleware(wrapped_appstats_app)
+
+                # Turn on cProfile profiling for this request
+                import cProfile
+                self.prof = cProfile.Profile()
+
+                # Get profiled wsgi result
+                result = self.prof.runcall(lambda *args, **kwargs: self.app(environ, profiled_start_response), None, None)
+
+                self.recorder = recording.recorder
+
+                # If we're dealing w/ a generator, profile all of the .next calls as well
+                if type(result) == GeneratorType:
+
+                    while True:
+                        try:
+                            yield self.prof.runcall(result.next)
+                        except StopIteration:
+                            break
+
+                else:
+                    for value in result:
+                        yield value
+
+                self.logs = self.get_logs(self.handler)
+                logging.getLogger().removeHandler(self.handler)
+                self.handler.stream.close()
+                self.handler = None
 
             # Store stats for later access
             RequestStats(request_id, environ, self).store()
