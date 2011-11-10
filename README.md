@@ -10,6 +10,7 @@ gae_mini_profiler is [MIT licensed](http://en.wikipedia.org/wiki/MIT_License).
 * <a href="#screens">Screenshots</a>  
 * <a href="#start">Getting Started</a>  
 * <a href="#features">Features</a>  
+* <a href="#dependencies">Dependencies</a>  
 * <a href="#bonus">Bonus</a>  
 * <a href="#faq">FAQ</a>  
 
@@ -70,6 +71,11 @@ enabled_profiler_emails = [
 * Share individual profile results with others by sending link
 * Duplicate RPC calls are flagged for easy spotting in case you're repeating memcache or datastore queries.
 * Quickly sort and examine profiler stats and call stacks
+
+## <a name="dependencies">Dependencies</a>
+
+* jQuery must be included somewhere on your page.
+* (Optional) If you want the fancy slider selector (see below) for the Logs output, jQuery UI must also be included with its Slider plugin.
 
 ## <a name="bonus">Bonus</a>
 
