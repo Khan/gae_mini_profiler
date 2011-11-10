@@ -84,12 +84,12 @@
         <div class="expand">
             <a href="#rpc-link" class="rpc-link link uses_script">Remote Procedure Calls</a>
             <div class="summary">
-                ${appstats_results.total_time} <span class="ms">ms</span>
-                spent in ${appstats_results.total_call_count} RPC{{if appstats_results.total_call_count != 1}}s{{/if}}
+                    ${appstats_results.total_time} <span class="ms">ms</span>
+                    spent in ${appstats_results.total_call_count} RPC{{if appstats_results.total_call_count != 1}}s{{/if}}
 
-                {{if appstats_results.likely_dupes}}
-                    <span class="dupe">(likely dupes)</span>
-                {{/if}}
+                    {{if appstats_results.likely_dupes}}
+                        <span class="dupe">(likely dupes)</span>
+                    {{/if}}
             </div>
         </div>
 
@@ -103,6 +103,7 @@
                     <tr>
                         <th class="left"><nobr>service type</nobr></th>
                         <th class="right">calls</th>
+                        <th class="right">misses</th>
                         <th class="right headerSortDown"><nobr>total ms</nobr></th>
                     </tr>
                 </thead>
@@ -110,6 +111,7 @@
                 <tr>
                     <td>${$value.service_prefix}</td>
                     <td class="right">${$value.total_call_count}</td>
+                    <td class="right">${$value.total_misses}</td>
                     <td class="right">${$value.total_time}</td>
                 </tr>
                 {{/each}}
@@ -149,12 +151,60 @@
                             ${$value.request_short}
                         </span>
                     </td>
-                    <td>${$value.response}</td>
+                    <td>
+                        <span title="${$value.response}">
+                            ${$value.response_short}
+                        </span>
+                    </td>
                 </tr>
                 {{/each}}
             </table>
             {{/if}}
         </div>
 
+        <div class="expand">
+            <a href="#logs-link" class="logs-link link uses_script">Logs</a>
+            <div class="summary">
+                {{each [10,20,30,40,50]}}
+                    {{if log_count[$value] > 0}}
+                        <span class='loglevel ll${$value}'></span> &#215;${log_count[$value]}
+                    {{/if}}
+                {{/each}}
+            </div>
+        </div>
+
+        <div class="logs-details details fancy-scrollbar" style="display:none;">
+            <div id="slider">
+                Min level:
+                <span class="loglevel"></span>
+                <span class="minlevel-text"></span>
+                <div class="container"><div class="control"></div></div>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th class="left">log</th>
+                        <th class="left">time</th>
+                        <th class="left"><nobr>fn</nobr></th>
+                        <th class="left"><nobr>file</nobr></th>
+                        <th class="left"><nobr>line</nobr></th>
+                        <th class="left"><nobr>message</nobr></th>
+                    </tr>
+                </thead>
+                {{each logs}}
+                    <tr class="ll${$value[0]}">
+                        <td class="left" class="${$value[0]}"><span class='loglevel ll${$value[0]}'><span>${$value[0]}</span></span></td>
+                        <td class="left">${$value[1]}</td>
+                        <td class="left">${$value[2]}</td>
+                        <td class="left">${$value[3]}</td>
+                        <td class="left">${$value[4]}</td>
+                        <td class="left">
+<pre>
+${$value[5]}
+</pre>                  </td>
+                    </tr>
+                {{/each}}
+            </table>
+        </div>
     </div>
 </script>

@@ -11,7 +11,6 @@ application = webapp.WSGIApplication([
 
 template.register_template_library('gae_mini_profiler.templatetags')
 
-
 def main():
     run_wsgi_app(application)
 

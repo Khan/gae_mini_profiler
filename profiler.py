@@ -1,4 +1,5 @@
 import datetime
+import logging
 import os
 import pickle
 import re
@@ -10,11 +11,18 @@ import zlib
 from google.appengine.ext.webapp import template, RequestHandler
 from google.appengine.api import memcache
 
-from gae_mini_profiler import config
+import unformatter
+from pprint import pformat
+import cleanup
+
+import gae_mini_profiler.config
+if os.environ["SERVER_SOFTWARE"].startswith("Devel"):
+    config = gae_mini_profiler.config.ProfilerConfigDevelopment
+else:
+    config = gae_mini_profiler.config.ProfilerConfigProduction
 
 # request_id is a per-request identifier accessed by a couple other pieces of gae_mini_profiler
 request_id = None
-
 
 class SharedStatsHandler(RequestHandler):
 
@@ -31,7 +39,6 @@ class SharedStatsHandler(RequestHandler):
                 "request_id": request_id
             })
         )
-
 
 class RequestStatsHandler(RequestHandler):
 
@@ -67,10 +74,11 @@ class RequestStatsHandler(RequestHandler):
 
         self.response.out.write(simplejson.dumps(list_request_stats))
 
-
 class RequestStats(object):
 
-    serialized_properties = ["request_id", "url", "url_short", "s_dt", "profiler_results", "appstats_results", "temporary_redirect"]
+    serialized_properties = ["request_id", "url", "url_short", "s_dt",
+                             "profiler_results", "appstats_results",
+                             "temporary_redirect", "logs"]
 
     def __init__(self, request_id, environ, middleware):
         self.request_id = request_id
@@ -87,6 +95,7 @@ class RequestStats(object):
 
         self.profiler_results = RequestStats.calc_profiler_results(middleware)
         self.appstats_results = RequestStats.calc_appstats_results(middleware)
+        self.logs = middleware.logs
 
         self.temporary_redirect = middleware.temporary_redirect
         self.disabled = False
@@ -132,9 +141,7 @@ class RequestStats(object):
     def short_rpc_file_fmt(s):
         if not s:
             return ""
-        if "/" in s:
-            return s[s.find("/"):]
-        return s
+        return s[s.find("/"):]
 
     @staticmethod
     def calc_profiler_results(middleware):
@@ -189,7 +196,7 @@ class RequestStats(object):
             likely_dupes = False
             end_offset_last = 0
 
-            dict_requests = {}
+            requests_set = set()
 
             appstats_key = long(middleware.recorder.start_timestamp * 1000)
 
@@ -209,7 +216,11 @@ class RequestStats(object):
                     service_prefix = service_prefix[:service_prefix.find(".")]
 
                 if service_prefix not in service_totals_dict:
-                    service_totals_dict[service_prefix] = {"total_call_count": 0, "total_time": 0}
+                    service_totals_dict[service_prefix] = {
+                        "total_call_count": 0,
+                        "total_time": 0,
+                        "total_misses": 0,
+                    }
 
                 service_totals_dict[service_prefix]["total_call_count"] += 1
                 service_totals_dict[service_prefix]["total_time"] += trace.duration_milliseconds()
@@ -222,24 +233,36 @@ class RequestStats(object):
                                 frame.function_name()))
 
                 request = trace.request_data_summary()
-                request_short = request
-                if len(request_short) > 100:
-                    request_short = request_short[:100] + "..."
+                response = trace.response_data_summary()
 
-                likely_dupe = request in dict_requests
+                likely_dupe = request in requests_set
                 likely_dupes = likely_dupes or likely_dupe
+                requests_set.add(request)
 
-                dict_requests[request] = True
+                request_short = request_pretty = None
+                response_short = response_pretty = None
+                miss = 0
+                try:
+                    request_object = unformatter.unformat(request)
+                    response_object = unformatter.unformat(response)
 
-                response = trace.response_data_summary()[:100]
+                    request_short, response_short, miss = cleanup.cleanup(request_object, response_object)
+
+                    request_pretty = pformat(request_object)
+                    response_pretty = pformat(response_object)
+                except Exception, e:
+                    logging.warning("Prettifying RPC calls failed.\n%s", e)
+
+                service_totals_dict[service_prefix]["total_misses"] += miss
 
                 calls.append({
                     "service": trace.service_call_name(),
                     "start_offset": RequestStats.milliseconds_fmt(trace.start_offset_milliseconds()),
                     "total_time": RequestStats.milliseconds_fmt(trace.duration_milliseconds()),
-                    "request": request,
-                    "request_short": request_short,
-                    "response": response,
+                    "request": request_pretty or request,
+                    "response": response_pretty or response,
+                    "request_short": request_short or cleanup.truncate(request),
+                    "response_short": response_short or cleanup.truncate(response),
                     "stack_frames_desc": stack_frames_desc,
                     "likely_dupe": likely_dupe,
                 })
@@ -249,6 +272,7 @@ class RequestStats(object):
                 service_totals.append({
                     "service_prefix": service_prefix,
                     "total_call_count": service_totals_dict[service_prefix]["total_call_count"],
+                    "total_misses": service_totals_dict[service_prefix]["total_misses"],
                     "total_time": RequestStats.milliseconds_fmt(service_totals_dict[service_prefix]["total_time"]),
                 })
             service_totals = sorted(service_totals, reverse=True, key=lambda service_total: float(service_total["total_time"]))
@@ -264,7 +288,6 @@ class RequestStats(object):
 
         return None
 
-
 class ProfilerWSGIMiddleware(object):
 
     def __init__(self, app):
@@ -274,6 +297,7 @@ class ProfilerWSGIMiddleware(object):
         self.prof = None
         self.recorder = None
         self.temporary_redirect = False
+        self.handler = None
 
     def __call__(self, environ, start_response):
 
@@ -286,16 +310,18 @@ class ProfilerWSGIMiddleware(object):
         self.recorder = None
         self.temporary_redirect = False
 
-        if config.should_profile(environ):
+        # Never profile calls to the profiler itself to avoid endless recursion.
+        if config.should_profile(environ) and not environ.get("PATH_INFO", "").startswith("/gae_mini_profiler/"):
 
             # Set a random ID for this request so we can look up stats later
             import base64
-            import os
             request_id = base64.urlsafe_b64encode(os.urandom(5))
+
+            self.add_handler()
 
             # Send request id in headers so jQuery ajax calls can pick
             # up profiles.
-            def profiled_start_response(status, headers, exc_info=None):
+            def profiled_start_response(status, headers, exc_info = None):
 
                 if status.startswith("302 "):
                     # Temporary redirect. Add request identifier to redirect location
@@ -311,12 +337,18 @@ class ProfilerWSGIMiddleware(object):
 
             # Configure AppStats output, keeping a high level of request
             # content so we can detect dupe RPCs more accurately
+
+            # monkey patch appstats.formatting to fix string quoting bug
+            # see http://code.google.com/p/googleappengine/issues/detail?id=5976
+            import unformatter.formatting
+            import google.appengine.ext.appstats.formatting
+            google.appengine.ext.appstats.formatting._format_value = unformatter.formatting._format_value
+
             from google.appengine.ext.appstats import recording
             recording.config.MAX_REPR = 750
 
             # Turn on AppStats monitoring for this request
             old_app = self.app
-
             def wrapped_appstats_app(environ, start_response):
                 # Use this wrapper to grab the app stats recorder for RequestStats.save()
 
@@ -350,6 +382,11 @@ class ProfilerWSGIMiddleware(object):
                 for value in result:
                     yield value
 
+            self.logs = self.get_logs(self.handler)
+            logging.getLogger().removeHandler(self.handler)
+            self.handler.stream.close()
+            self.handler = None
+
             # Store stats for later access
             RequestStats(request_id, environ, self).store()
 
@@ -362,6 +399,44 @@ class ProfilerWSGIMiddleware(object):
             result = self.app(environ, start_response)
             for value in result:
                 yield value
+
+    def add_handler(self):
+        if self.handler is None:
+            self.handler = ProfilerWSGIMiddleware.create_handler()
+        logging.getLogger().addHandler(self.handler)
+
+    @staticmethod
+    def create_handler():
+        handler = logging.StreamHandler(StringIO.StringIO())
+        handler.setLevel(logging.DEBUG)
+        formatter = logging.Formatter("\t".join([
+            '%(levelno)s',
+            '%(asctime)s%(msecs)d',
+            '%(funcName)s',
+            '%(filename)s',
+            '%(lineno)d',
+            '%(message)s',
+        ]), '%M:%S.')
+        handler.setFormatter(formatter)
+        return handler
+
+    @staticmethod
+    def get_logs(handler):
+        raw_lines = [l for l in handler.stream.getvalue().split("\n") if l]
+
+        lines = []
+        for line in raw_lines:
+            if "\t" in line:
+                fields = line.split("\t")
+                lines.append(fields)
+            else: # line is part of a multiline log message (prob a traceback)
+                prevline = lines[-1][-1]
+                if prevline: # ignore leading blank lines in the message
+                    prevline += "\n"
+                prevline += line
+                lines[-1][-1] = prevline
+
+        return lines
 
     @staticmethod
     def headers_with_modified_redirect(environ, headers):
