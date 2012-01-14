@@ -6,13 +6,13 @@ This project is heavily inspired by the impressive [mvc-mini-profiler](http://co
 
 gae_mini_profiler is [MIT licensed](http://en.wikipedia.org/wiki/MIT_License).
 
-* <a href="#demo">Demo</a>  
-* <a href="#screens">Screenshots</a>  
-* <a href="#start">Getting Started</a>  
-* <a href="#features">Features</a>  
-* <a href="#dependencies">Dependencies</a>  
-* <a href="#bonus">Bonus</a>  
-* <a href="#faq">FAQ</a>  
+* <a href="#demo">Demo</a>
+* <a href="#screens">Screenshots</a>
+* <a href="#start">Getting Started</a>
+* <a href="#features">Features</a>
+* <a href="#dependencies">Dependencies</a>
+* <a href="#bonus">Bonus</a>
+* <a href="#faq">FAQ</a>
 
 ## <a name="demo">Demo</a>
 
@@ -30,37 +30,48 @@ You can play around with one of GAE's sample applications with gae_mini_profiler
 ## <a name="start">Getting Started</a>
 
 1. Download this repository's source and copy the `gae_mini_profiler/` folder into your App Engine project's root directory.
+
 2. Add the following two handler definitions to `app.yaml`:
-<pre>
-handlers:
-&ndash; url: /gae_mini_profiler/static
-&nbsp;&nbsp;static_dir: gae_mini_profiler/static<br/>
-&ndash; url: /gae_mini_profiler/.*
-&nbsp;&nbsp;script: gae_mini_profiler/main.py
-</pre>
-3. Modify the WSGI application you want to profile by wrapping it with the gae_mini_profiler WSGI application:
-<pre>
-&#35; Example of existing application
-application = webapp.WSGIApplication(...existing application...)<br/>
-&#35; Add the following
-from gae_mini_profiler import profiler
-application = profiler.ProfilerWSGIMiddleware(application)
-</pre>
-4. Insert the `profiler_includes` template tag below jQuery somewhere (preferably at the end of your template):
-<pre>
-        ...your html...
-        {% profiler_includes %}
-    &lt;/body&gt;
-&lt;/html&gt;
-</pre>
-5. You're all set! Just choose the users for whom you'd like to enable profiling in `gae_mini_profiler/config.py`:
-<pre>
-&#35; If using the default should_profile implementation, the profiler
-&#35; will only be enabled for requests made by the following GAE users.
-enabled_profiler_emails = [
-    "kamens@gmail.com",
-]
-</pre>
+
+        handlers:
+        - url: /gae_mini_profiler/static
+          static_dir: gae_mini_profiler/static
+        - url: /gae_mini_profiler/.*
+          script: gae_mini_profiler/main.py
+
+3. Modify the WSGI application you want to profile by wrapping it with the gae_mini_profiler WSGI application. This is usually done in `appengien_config.py`:
+
+        import gaetk.gaesessions
+        gae_mini_profiler_ENABLED_PROFILER_EMAILS = ['m.dornseif@hudora.de']
+
+        def webapp_add_wsgi_middleware(app):
+            """Called with each WSGI handler initialisation"""
+            app = gae_mini_profiler.profiler.ProfilerWSGIMiddleware(app)
+            return app
+
+4. If you use Django Templates insert the `profiler_includes` template tag below jQuery somewhere (preferably at the end of your template):
+
+                ...your html...
+                {% profiler_includes %}
+            </body>
+        </html>
+
+    Alternatively you can hardcode the call on any other template system like jinja2:
+
+        <link rel="stylesheet" type="text/css" href="/gae_mini_profiler/static/css/profiler.css" />
+        <script type="text/javascript" src="/gae_mini_profiler/static/js/profiler.js"></script>
+        <script type="text/javascript">GaeMiniProfiler.init(jQuery.cookiePlugin('MiniProfilerId'), false)</script>
+
+    If you use the static inclusion you probably should use your template engine to include the code only
+for admins or other profiling-prone users.
+
+5. You're all set! Just choose the users for whom you'd like to enable profiling by putting the respective E-Mail addresses in `appengine_config.py`:
+
+            gae_mini_profiler_ENABLED_PROFILER_EMAILS = ['user1@example.com',
+                                                         'user2@example.com']
+
+For more sophisticated choice of what to profile check `gae_mini_profiler/config.py`.
+
 
 ## <a name="features">Features</a>
 
@@ -85,7 +96,7 @@ gae_mini_profiler is currently in production use at [Khan Academy](http://khanac
 
 1. I had my appstats_RECORD_FRACTION variable set to 0.1, which means only 10% of my queries where getting profiles generated.  This meant that most of the time gae_mini_profiler was failing with a javascript error, because the appstats variable was null.
 
-    If you are using appengine_config.py to customize Appstats behavior you should add this to the top of your "appstats_should_record" method.  
+    If you are using appengine_config.py to customize Appstats behavior you should add this to the top of your "appstats_should_record" method.
 <pre>def appstats_should_record(env):
         from gae_mini_profiler.config import should_profile
         if should_profile(env):

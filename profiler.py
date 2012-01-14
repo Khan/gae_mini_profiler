@@ -16,12 +16,18 @@ import unformatter
 from pprint import pformat
 import cleanup
 import cookies
+import unformatter
 
-import gae_mini_profiler.config
+try:
+    import json
+except ImportError:
+    import simplejson as json
+
+from gae_mini_profiler.config import _config
 if os.environ["SERVER_SOFTWARE"].startswith("Devel"):
-    config = gae_mini_profiler.config.ProfilerConfigDevelopment
+    config = _config.ConfigDevelopment
 else:
-    config = gae_mini_profiler.config.ProfilerConfigProduction
+    config = _config.ConfigProduction
 
 # request_id is a per-request identifier accessed by a couple other pieces of gae_mini_profiler
 request_id = None
