@@ -27,6 +27,6 @@ class ProfilerConfigDevelopment:
 
 # see http://code.google.com/appengine/docs/python/tools/appengineconfig.html
 _config = lib_config.register('gae_mini_profiler',
-                              {'ENABLED_PROFILER_EMAILS': enabled_profiler_emails},
-                              {'ConfigProduction': ProfilerConfigProduction},
-                              {'ConfigDevelopment': ProfilerConfigDevelopment})
+                              {'ENABLED_PROFILER_EMAILS': enabled_profiler_emails,
+                               'ConfigProduction': ProfilerConfigProduction,
+                               'ConfigDevelopment': ProfilerConfigDevelopment})
