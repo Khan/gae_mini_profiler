@@ -39,7 +39,7 @@ You can play around with one of GAE's sample applications with gae_mini_profiler
         - url: /gae_mini_profiler/.*
           script: gae_mini_profiler/main.py
 
-3. Modify the WSGI application you want to profile by wrapping it with the gae_mini_profiler WSGI application. This is usually done in `appengien_config.py`:
+3. Modify the WSGI application you want to profile by wrapping it with the gae_mini_profiler WSGI application. This is usually done in `appengine_config.py`:
 
         import gaetk.gaesessions
         gae_mini_profiler_ENABLED_PROFILER_EMAILS = ['m.dornseif@hudora.de']
