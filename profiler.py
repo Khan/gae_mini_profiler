@@ -2,9 +2,15 @@ import datetime
 import time
 import logging
 import os
-import pickle
+import cPickle as pickle
 import re
-import simplejson
+
+# use json in Python 2.7, fallback to simplejson for Python 2.5
+try:
+    import json
+except ImportError:
+    import simplejson as json
+
 import StringIO
 from types import GeneratorType
 import zlib
@@ -16,18 +22,12 @@ import unformatter
 from pprint import pformat
 import cleanup
 import cookies
-import unformatter
 
-try:
-    import json
-except ImportError:
-    import simplejson as json
-
-from gae_mini_profiler.config import _config
+import gae_mini_profiler.config
 if os.environ["SERVER_SOFTWARE"].startswith("Devel"):
-    config = _config.ConfigDevelopment
+    config = gae_mini_profiler.config.ProfilerConfigDevelopment
 else:
-    config = _config.ConfigProduction
+    config = gae_mini_profiler.config.ProfilerConfigProduction
 
 # request_id is a per-request identifier accessed by a couple other pieces of gae_mini_profiler
 request_id = None
@@ -80,7 +80,7 @@ class RequestStatsHandler(RequestHandler):
                     request_stats.disabled = True
                     request_stats.store()
 
-        self.response.out.write(simplejson.dumps(list_request_stats))
+        self.response.out.write(json.dumps(list_request_stats))
 
 class RequestStats(object):
 
@@ -385,10 +385,8 @@ class ProfilerWSGIMiddleware(object):
                 def wrapped_appstats_app(environ, start_response):
                     # Use this wrapper to grab the app stats recorder for RequestStats.save()
 
-                    if hasattr(recording.recorder, "get_for_current_request"):
-                        self.recorder = recording.recorder.get_for_current_request()
-                    else:
-                        self.recorder = recording.recorder
+                    if recording.recorder_proxy.has_recorder_for_current_request():
+                        self.recorder = recording.recorder_proxy.get_for_current_request()
 
                     return old_app(environ, start_response)
                 self.app = recording.appstats_wsgi_middleware(wrapped_appstats_app)
@@ -399,8 +397,6 @@ class ProfilerWSGIMiddleware(object):
 
                 # Get profiled wsgi result
                 result = self.prof.runcall(lambda *args, **kwargs: self.app(environ, profiled_start_response), None, None)
-
-                self.recorder = recording.recorder
 
                 # If we're dealing w/ a generator, profile all of the .next calls as well
                 if type(result) == GeneratorType:

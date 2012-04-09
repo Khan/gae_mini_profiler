@@ -104,28 +104,34 @@ def datastore_query_filter(query):
         props = f["property_"]
         for p in props:
             p = p["Property"]
-            name = p["name_"]
+            name = p["name_"] if "name_" in p else "UnknownName"
 
-            propval = p['value_']['PropertyValue']
+            if 'value_' in p:
 
-            if 'stringvalue_' in propval:
-                value = propval["stringvalue_"]
-            elif 'referencevalue_' in propval:
-                ref = propval['referencevalue_']['PropertyValue_ReferenceValue']
-                els = ref['pathelement_']
-                paths = []
-                for el in els:
-                    path = el['PropertyValue_ReferenceValuePathElement']
-                    paths.append("%s(%s)" % (path['type_'], id_or_name(path)))
-                value = "->".join(paths)
-            elif 'booleanvalue_' in propval:
-                value = propval["booleanvalue_"]
-            elif 'uservalue_' in propval:
-                value = 'User(' + propval['uservalue_']['PropertyValue_UserValue']['email_'] + ')'
-            elif '...' in propval:
-                value = '...'
+                propval = p['value_']['PropertyValue']
+
+                if 'stringvalue_' in propval:
+                    value = propval["stringvalue_"]
+                elif 'referencevalue_' in propval:
+                    ref = propval['referencevalue_']['PropertyValue_ReferenceValue']
+                    els = ref['pathelement_']
+                    paths = []
+                    for el in els:
+                        path = el['PropertyValue_ReferenceValuePathElement']
+                        paths.append("%s(%s)" % (path['type_'], id_or_name(path)))
+                    value = "->".join(paths)
+                elif 'booleanvalue_' in propval:
+                    value = propval["booleanvalue_"]
+                elif 'uservalue_' in propval:
+                    value = 'User(' + propval['uservalue_']['PropertyValue_UserValue']['email_'] + ')'
+                elif '...' in propval:
+                    value = '...'
+                elif 'int64value_' in propval:
+                    value = propval["int64value_"]
+                else:
+                    raise Exception(propval)
             else:
-                raise Exception(propval)
+                value = ''
             filters_clean.append((name, op, value))
     return filters_clean
 
@@ -153,15 +159,23 @@ def id_or_name(path):
 def datastore_get(request):
     keys = request["key_"]
     if len(keys) > 1:
-        raise Exception(keys)
-    return cleanup_key(keys[0])
+        keylist = cleanup_key(keys.pop(0))
+        for key in keys:
+            keylist += ", " + cleanup_key(key)
+        return keylist
+    elif keys:
+        return cleanup_key(keys[0])
 
 def cleanup_key(key):
+    if 'Reference' not in key: 
+        #sometimes key is passed in as '...'
+        return key
     els = key['Reference']['path_']['Path']['element_']
     paths = []
     for el in els:
         path = el['Path_Element']
-        paths.append("%s(%s)" % (path['type_'], id_or_name(path)))
+        paths.append("%s(%s)" % (path['type_'] if 'type_' in path 
+                     else 'UnknownType', id_or_name(path)))
     return "->".join(paths)
 
 def datastore_put(request):

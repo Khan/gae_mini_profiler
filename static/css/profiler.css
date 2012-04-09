@@ -64,7 +64,7 @@
     -moz-border-radius-bottomright: 12px;
     border-bottom-right-radius: 12px;
 
-    z-index: 10001;
+    z-index: 1000;
 }
 
 .g-m-p .title {

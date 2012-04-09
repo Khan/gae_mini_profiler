@@ -80,6 +80,8 @@ def unformat(text):
 
 def unformat_value(text, i=0, level=0, delim=None, out=UnformatStream()):
     start = i
+    if text == '':
+        return i
     if text[i].isdigit():
         # number
         while text[i] not in [',', delim]:
