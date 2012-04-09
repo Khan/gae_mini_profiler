@@ -56,11 +56,20 @@ You can play around with one of GAE's sample applications with gae_mini_profiler
             </body>
         </html>
 
-    Alternatively you can hardcode the call on any other template system like jinja2:
+    Alternatively on any other template system you can hardcode the call.
+    
+    For example in jinja2 first add a function to template globals that can retrieve the request_id, something like:
+    
+        from gae_mini_profiler import profiler
+        def get_request_id():
+            return profiler.request_id
+        jinja_env.globals['get_request_id'] = get_request_id
+
+    Than add this to your template:
 
         <link rel="stylesheet" type="text/css" href="/gae_mini_profiler/static/css/profiler.css" />
         <script type="text/javascript" src="/gae_mini_profiler/static/js/profiler.js"></script>
-        <script type="text/javascript">GaeMiniProfiler.init(jQuery.cookiePlugin('MiniProfilerId'), false)</script>
+        <script type="text/javascript">GaeMiniProfiler.init("{{get_request_id()}}", false)</script>
 
     If you use the static inclusion you probably should use your template engine to include the code only
 for admins or other profiling-prone users.
