@@ -241,7 +241,7 @@ class RequestStats(object):
                 service_totals_dict[service_prefix]["total_time"] += trace.duration_milliseconds()
 
                 stack_frames_desc = []
-                for frame in trace.call_stack_:
+                for frame in trace.call_stack_list():
                     stack_frames_desc.append("%s:%s %s" %
                             (RequestStats.short_rpc_file_fmt(frame.class_or_file_name()),
                                 frame.line_number(),
