@@ -484,11 +484,16 @@ class ProfilerWSGIMiddleware(object):
                 # Remove any pre-existing miniprofiler redirect id
                 location = header[1]
                 location = reg.sub("", location)
+                location_hash = False
+                if "#" in location:
+                  location, location_hash = location.split("#", 1)
 
                 # Add current request id as miniprofiler redirect id
                 location += ("&" if "?" in location else "?")
                 location = location.replace("&&", "&")
                 location += "mp-r-id=%s" % request_id_chain
+                if location_hash:
+                  location += "#%s" % location_hash
 
                 headers_modified.append((header[0], location))
             else:
