@@ -1,10 +1,9 @@
-
 var GaeMiniProfiler = {
 
     init: function(requestId, fShowImmediately) {
         // Fetch profile results for any ajax calls
         // (see http://code.google.com/p/mvc-mini-profiler/source/browse/MvcMiniProfiler/UI/Includes.js)
-        $(document).ajaxComplete(function (e, xhr, settings) {
+        jQuery(document).ajaxComplete(function (e, xhr, settings) {
             if (xhr) {
                 var requestId = xhr.getResponseHeader('X-MiniProfiler-Id');
                 if (requestId) {
@@ -18,11 +17,11 @@ var GaeMiniProfiler = {
     },
 
     toggleEnabled: function(link) {
-        var disabled = !!$.cookiePlugin("g-m-p-disabled");
+        var disabled = !!jQuery.cookiePlugin("g-m-p-disabled");
 
-        $.cookiePlugin("g-m-p-disabled", (disabled ? null : "1"), {path: '/'});
+        jQuery.cookiePlugin("g-m-p-disabled", (disabled ? null : "1"), {path: '/'});
 
-        $(link).replaceWith("<em>" + (disabled ? "Enabled" : "Disabled") + "</em>");
+        jQuery(link).replaceWith("<em>" + (disabled ? "Enabled" : "Disabled") + "</em>");
     },
 
     appendRedirectIds: function(requestId, queryString) {
@@ -43,7 +42,7 @@ var GaeMiniProfiler = {
     fetch: function(requestId, queryString, fShowImmediately) {
         var requestIds = this.appendRedirectIds(requestId, queryString);
 
-        $.get(
+        jQuery.get(
                 "/gae_mini_profiler/request",
                 { "request_ids": requestIds.join(",") },
                 function(data) {
@@ -61,7 +60,7 @@ var GaeMiniProfiler = {
             var jCorner = this.renderCorner(data[ix]);
 
             if (!jCorner.data("attached")) {
-                $('body')
+                jQuery('body')
                     .append(jCorner)
                     .click(function(e) { return GaeMiniProfiler.collapse(e); });
                 jCorner
@@ -75,9 +74,9 @@ var GaeMiniProfiler = {
     },
 
     collapse: function(e) {
-        if ($(".g-m-p").is(":visible")) {
-            $(".g-m-p").slideUp("fast");
-            $(".g-m-p-corner").slideDown("fast")
+        if (jQuery(".g-m-p").is(":visible")) {
+            jQuery(".g-m-p").slideUp("fast");
+            jQuery(".g-m-p-corner").slideDown("fast")
                 .find(".expanded").removeClass("expanded");
             return false;
         }
@@ -86,19 +85,19 @@ var GaeMiniProfiler = {
     },
 
     expand: function(elEntry, data) {
-        var jPopup = $(".g-m-p");
+        var jPopup = jQuery(".g-m-p");
 
         if (jPopup.length)
             jPopup.remove();
         else
-            $(document).keyup(function(e) { if (e.which == 27) GaeMiniProfiler.collapse() });
+            jQuery(document).keyup(function(e) { if (e.which == 27) GaeMiniProfiler.collapse() });
 
         jPopup = this.renderPopup(data);
-        $('body').append(jPopup);
+        jQuery('body').append(jPopup);
 
-        var jCorner = $(".g-m-p-corner");
+        var jCorner = jQuery(".g-m-p-corner");
         jCorner.find(".expanded").removeClass("expanded");
-        $(elEntry).addClass("expanded");
+        jQuery(elEntry).addClass("expanded");
 
         jPopup
             .find(".profile-link")
@@ -108,7 +107,7 @@ var GaeMiniProfiler = {
             .find(".logs-link")
                 .click(function() { GaeMiniProfiler.toggleSection(this, ".logs-details"); return false; }).end()
             .find(".callers-link")
-                .click(function() { $(this).parents("td").find(".callers").slideToggle("fast"); return false; }).end()
+                .click(function() { jQuery(this).parents("td").find(".callers").slideToggle("fast"); return false; }).end()
             .find(".toggle-enabled")
                 .click(function() { GaeMiniProfiler.toggleEnabled(this); return false; }).end()
             .click(function(e) { e.stopPropagation(); })
@@ -117,10 +116,10 @@ var GaeMiniProfiler = {
 
         var toggleLogRows = function(level) {
             var names = {10:'Debug', 20:'Info', 30:'Warning', 40:'Error', 50:'Critical'};
-            $('#slider .minlevel-text').text(names[level]);
-            $('#slider .loglevel').attr('class', 'loglevel ll'+level);
+            jQuery('#slider .minlevel-text').text(names[level]);
+            jQuery('#slider .loglevel').attr('class', 'loglevel ll'+level);
             for (var i = 10; i<=50; i += 10) {
-                var rows = $('tr.ll'+i);
+                var rows = jQuery('tr.ll'+i);
                 if (i<level)
                     rows.hide();
                 else
@@ -130,9 +129,9 @@ var GaeMiniProfiler = {
 
         var initLevel = 10;
 
-        if ($('#slider .control').slider) {
+        if (jQuery('#slider .control').slider) {
             initLevel = 30;
-            $('#slider .control').slider({
+            jQuery('#slider .control').slider({
                 value: initLevel,
                 min: 10,
                 max: 50,
@@ -149,16 +148,16 @@ var GaeMiniProfiler = {
 
     toggleSection: function(elLink, selector) {
 
-        var fWasVisible = $(".g-m-p " + selector).is(":visible");
+        var fWasVisible = jQuery(".g-m-p " + selector).is(":visible");
 
-        $(".g-m-p .expand").removeClass("expanded");
-        $(".g-m-p .details:visible").slideUp(50);
+        jQuery(".g-m-p .expand").removeClass("expanded");
+        jQuery(".g-m-p .details:visible").slideUp(50);
 
         if (!fWasVisible) {
-            $(elLink).parents(".expand").addClass("expanded");
-            $(selector).slideDown("fast", function() {
+            jQuery(elLink).parents(".expand").addClass("expanded");
+            jQuery(selector).slideDown("fast", function() {
 
-                var jTable = $(this).find("table");
+                var jTable = jQuery(this).find("table");
 
                 if (jTable.length && !jTable.data("table-sorted")) {
                     jTable
@@ -173,28 +172,28 @@ var GaeMiniProfiler = {
     renderPopup: function(data) {
         if (data.logs) {
             var counts = {}
-            $.each(data.logs, function(i, log) {
+            jQuery.each(data.logs, function(i, log) {
                 var c = counts[log[0]] || 0;
                 counts[log[0]] = c + 1;
             });
             data.log_count = counts;
         }
 
-        return $("#profilerTemplate").tmplPlugin(data);
+        return jQuery("#profilerTemplate").tmplPlugin(data);
     },
 
     renderCorner: function(data) {
         if (data && data.profiler_results) {
-            var jCorner = $(".g-m-p-corner");
+            var jCorner = jQuery(".g-m-p-corner");
 
             var fFirst = false;
             if (!jCorner.length) {
-                jCorner = $("#profilerCornerTemplate").tmplPlugin();
+                jCorner = jQuery("#profilerCornerTemplate").tmplPlugin();
                 fFirst = true;
             }
 
             return jCorner.append(
-                    $("#profilerCornerEntryTemplate")
+                    jQuery("#profilerCornerEntryTemplate")
                         .tmplPlugin(data)
                         .addClass(fFirst ? "" : "ajax")
                         .click(function() { GaeMiniProfiler.expand(this, data); return false; })
@@ -209,9 +208,9 @@ var GaeMiniProfilerTemplate = {
     template: null,
 
     init: function(callback) {
-        $.get("/gae_mini_profiler/static/js/template.tmpl", function (data) {
+        jQuery.get("/gae_mini_profiler/static/js/template.tmpl", function (data) {
             if (data) {
-                $('body').append(data);
+                jQuery('body').append(data);
                 callback();
             }
         });
