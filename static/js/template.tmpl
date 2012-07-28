@@ -92,12 +92,16 @@
         <div class="expand">
             <a href="#rpc-link" class="rpc-link link uses_script">Remote Procedure Calls</a>
             <div class="summary">
+            {{if appstats_results.appstats_available}}
                     ${appstats_results.total_time} <span class="ms">ms</span>
                     spent in ${appstats_results.total_call_count} RPC{{if appstats_results.total_call_count != 1}}s{{/if}}
 
                     {{if appstats_results.likely_dupes}}
                         <span class="dupe">(likely dupes)</span>
                     {{/if}}
+            {{else}}
+            		Appstats are unavailable
+            {{/if}}
             </div>
         </div>
 
@@ -105,7 +109,7 @@
 
             <a class="appstats-link" target="_appstats" href="/_ah/stats/details?time=${appstats_results.appstats_key}">Full Appstats Details</a>
 
-            {{if appstats_results.calls.length}}
+            {{if appstats_results.appstats_available && appstats_results.calls.length}}
             <table class="rpc-service-totals">
                 <thead>
                     <tr>

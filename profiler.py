@@ -293,6 +293,7 @@ class RequestStats(object):
             service_totals = sorted(service_totals, reverse=True, key=lambda service_total: float(service_total["total_time"]))
 
             return  {
+                        "appstats_available": True,
                         "total_call_count": total_call_count,
                         "total_time": RequestStats.milliseconds_fmt(total_time),
                         "calls": calls,
@@ -301,7 +302,7 @@ class RequestStats(object):
                         "appstats_key": appstats_key,
                     }
 
-        return None
+        return { "appstats_available": False, }
 
 class ProfilerWSGIMiddleware(object):
 
