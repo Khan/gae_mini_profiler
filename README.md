@@ -2,9 +2,7 @@
 
 gae_mini_profiler is a quick drop-in WSGI app that provides ubiquitous profiling of your existing GAE projects. It exposes both RPC statistics and standard profiling output for users of your choosing on your production site. Only requests coming from users of your choosing will be profiled, and others will not suffer any performance degradation. See screenshots and features below.
 
-This project is heavily inspired by the impressive [mvc-mini-profiler](http://miniprofiler.com/).
-
-gae_mini_profiler is [MIT licensed](http://en.wikipedia.org/wiki/MIT_License).
+This project is heavily inspired by the StackExchange team's impressive [mini-profiler](http://miniprofiler.com/).
 
 * <a href="#demo">See it in action</a>
 * <a href="#screens">Screenshots</a>
@@ -37,7 +35,7 @@ Play around with a demo App Engine applications with gae_mini_profiler enabled a
         - url: /gae_mini_profiler/static
           static_dir: gae_mini_profiler/static
         - url: /gae_mini_profiler/.*
-          script: gae_mini_profiler/main.py
+          script: gae_mini_profiler.main.application
 
 3. Modify the WSGI application you want to profile by wrapping it with the gae_mini_profiler WSGI application.
 
@@ -48,33 +46,36 @@ Play around with a demo App Engine applications with gae_mini_profiler enabled a
 
 4. Modify your template to include our javascript and stylesheets just before your ending body tag.
 
-        There is a profiler_includes() function in gae_mini_profiler.templatetags that spits out the right code for these scripts and stylesheets.
+    There is a profiler_includes() function in gae_mini_profiler.templatetags that spits out the right code for these scripts and stylesheets.
         
-        Using any template engine of your choice, call this function at the end of your template:
-                    ...your html...
-                    {% profiler_includes %}
-                &lt;/body&gt;
-            &lt;/html&gt;
+    Using any template engine of your choice, call this function at the end of your template:
+    
+                ...
+                {% profiler_includes %}
+            </body>
+        </html>
 
-        Note that these resources will not be loaded on requests when the profiler is disabled, so you don't need to worry about extra HTTP requests slowing down your users.
+    Note that these resources will not be loaded on requests when the profiler is disabled, so you don't need to worry about extra HTTP requests slowing down your users.
 
-        Using Django?
-            You can register a simple_tag to expose this to your templates:
-                register = template.create_template_register()
-                @register.simple_tag
-                def profiler_includes():
-                    return gae_mini_profiler.templatetags.profiler_includes()
+    Using Django?
+        You can register a simple_tag to expose this to your templates:
+        
+        register = template.create_template_register()
+        @register.simple_tag
+        def profiler_includes():
+            return gae_mini_profiler.templatetags.profiler_includes()
                     
-        Using jinja2?
-            You can expose this function to your templates easily:
-                webapp2_extras.jinja2.default_config = {
-                    "globals": {
-                        profiler_includes: gae_mini_profiler.templatetags.profiler_includes
-                    }
-                }
+    Using jinja2?
+        You can expose this function to your templates easily:
+        
+        webapp2_extras.jinja2.default_config = {
+            "globals": {
+                profiler_includes: gae_mini_profiler.templatetags.profiler_includes
+            }
+        }
                 
-        Using anything else to generate your HTML?
-            Just find some way to spit the results of profiler_includes() into your HTML. Doesn't have to be anything fancy.
+    Using anything else to generate your HTML?
+        Just find some way to spit the results of profiler_includes() into your HTML. Doesn't have to be anything fancy.
 
 5. You're all set! Now you just need to choose when you want to enable the profiler by overriding a simple function. By default it's enabled on the dev server and disabled in production. To enable it for App Engine admins in production, add the following to appengine_config.py:
 
@@ -82,10 +83,12 @@ Play around with a demo App Engine applications with gae_mini_profiler enabled a
                 from google.appengine.api import users
                 return users.is_current_user_admin()
                 
-        # ...in appengine_config.py you can override both of the following...
-        #        gae_mini_profiler_should_profile_production()
-        #        gae_mini_profiler_should_profile_development()
-        # ...with any logic you want to choose when the profiler should be enabled.
+    In appengine_config.py you can override both of the following...
+    
+        def gae_mini_profiler_should_profile_production(): pass
+        def gae_mini_profiler_should_profile_development(): pass
+        
+    ...with any logic you want to choose when the profiler should be enabled.
 
 
 ## <a name="features">Features</a>
@@ -109,7 +112,8 @@ gae_mini_profiler is currently in production use at [Khan Academy](http://khanac
 
 ## <a name="faq">FAQ</a>
 
-1. I had my appstats_RECORD_FRACTION variable set to 0.1, which means only 10% of my queries were getting profiles generated.  This meant that most of the time gae_mini_profiler was failing with a javascript error, because the appstats variable was null.
+1. What's the license? [MIT licensed](http://en.wikipedia.org/wiki/MIT_License).
+2. I had my appstats_RECORD_FRACTION variable set to 0.1, which means only 10% of my queries were getting profiles generated.  This meant that most of the time gae_mini_profiler was failing with a javascript error, because the appstats variable was null.
 
     If you are using appengine_config.py to customize Appstats behavior you should add this to the top of your "appstats_should_record" method.
 <pre>def appstats_should_record(env):
