@@ -90,9 +90,6 @@ class Mode(object):
         else:
             mode = cookies.get_cookie_value("g-m-p-mode")
 
-        import logging
-        logging.critical("FOUND MODE: %s" % mode)
-
         if (mode not in [
                 Mode.SIMPLE,
                 Mode.CPU_INSTRUMENTED,
