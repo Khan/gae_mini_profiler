@@ -48,33 +48,36 @@ Play around with a demo App Engine applications with gae_mini_profiler enabled a
 
 4. Modify your template to include our javascript and stylesheets just before your ending body tag.
 
-        There is a profiler_includes() function in gae_mini_profiler.templatetags that spits out the right code for these scripts and stylesheets.
+    There is a profiler_includes() function in gae_mini_profiler.templatetags that spits out the right code for these scripts and stylesheets.
         
-        Using any template engine of your choice, call this function at the end of your template:
-                    ...your html...
+    Using any template engine of your choice, call this function at the end of your template:
+    
+                    ...
                     {% profiler_includes %}
-                &lt;/body&gt;
-            &lt;/html&gt;
+                </body>
+            </html>
 
-        Note that these resources will not be loaded on requests when the profiler is disabled, so you don't need to worry about extra HTTP requests slowing down your users.
+    Note that these resources will not be loaded on requests when the profiler is disabled, so you don't need to worry about extra HTTP requests slowing down your users.
 
-        Using Django?
-            You can register a simple_tag to expose this to your templates:
-                register = template.create_template_register()
-                @register.simple_tag
-                def profiler_includes():
-                    return gae_mini_profiler.templatetags.profiler_includes()
+    Using Django?
+        You can register a simple_tag to expose this to your templates:
+        
+            register = template.create_template_register()
+            @register.simple_tag
+            def profiler_includes():
+                return gae_mini_profiler.templatetags.profiler_includes()
                     
-        Using jinja2?
-            You can expose this function to your templates easily:
-                webapp2_extras.jinja2.default_config = {
-                    "globals": {
-                        profiler_includes: gae_mini_profiler.templatetags.profiler_includes
-                    }
+    Using jinja2?
+        You can expose this function to your templates easily:
+        
+            webapp2_extras.jinja2.default_config = {
+                "globals": {
+                    profiler_includes: gae_mini_profiler.templatetags.profiler_includes
                 }
+            }
                 
-        Using anything else to generate your HTML?
-            Just find some way to spit the results of profiler_includes() into your HTML. Doesn't have to be anything fancy.
+    Using anything else to generate your HTML?
+        Just find some way to spit the results of profiler_includes() into your HTML. Doesn't have to be anything fancy.
 
 5. You're all set! Now you just need to choose when you want to enable the profiler by overriding a simple function. By default it's enabled on the dev server and disabled in production. To enable it for App Engine admins in production, add the following to appengine_config.py:
 
