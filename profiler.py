@@ -25,8 +25,6 @@ from google.appengine.api import memcache
 from google.appengine.ext.appstats import recording
 from google.appengine.ext.webapp import RequestHandler
 
-import unformatter
-from pprint import pformat
 import cookies
 import pickle
 

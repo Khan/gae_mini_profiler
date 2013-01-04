@@ -5,10 +5,12 @@ https://developers.google.com/appengine/docs/python/tools/appstats for more.
 """
 
 import logging
+from pprint import pformat
 
 from google.appengine.ext.appstats import recording
 
 import cleanup
+import unformatter
 from gae_mini_profiler import util
 
 class Profile(object):
