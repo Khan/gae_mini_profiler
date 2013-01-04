@@ -4,7 +4,7 @@ try:
 except ImportError:
     import simplejson as json
 
-from gae_mini_profiler import profiler
+import profiler
 
 
 def profiler_includes_request_id(request_id, show_immediately=False):
