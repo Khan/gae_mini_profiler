@@ -35,7 +35,7 @@ Play around with a demo App Engine applications with gae_mini_profiler enabled a
         - url: /gae_mini_profiler/static
           static_dir: gae_mini_profiler/static
         - url: /gae_mini_profiler/.*
-          script: gae_mini_profiler/main.py
+          script: gae_mini_profiler.main.application
 
 3. Modify the WSGI application you want to profile by wrapping it with the gae_mini_profiler WSGI application.
 
