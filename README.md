@@ -2,9 +2,7 @@
 
 gae_mini_profiler is a quick drop-in WSGI app that provides ubiquitous profiling of your existing GAE projects. It exposes both RPC statistics and standard profiling output for users of your choosing on your production site. Only requests coming from users of your choosing will be profiled, and others will not suffer any performance degradation. See screenshots and features below.
 
-This project is heavily inspired by the impressive [mvc-mini-profiler](http://miniprofiler.com/).
-
-gae_mini_profiler is [MIT licensed](http://en.wikipedia.org/wiki/MIT_License).
+This project is heavily inspired by the StackExchange team's impressive [mini-profiler](http://miniprofiler.com/).
 
 * <a href="#demo">See it in action</a>
 * <a href="#screens">Screenshots</a>
@@ -114,7 +112,8 @@ gae_mini_profiler is currently in production use at [Khan Academy](http://khanac
 
 ## <a name="faq">FAQ</a>
 
-1. I had my appstats_RECORD_FRACTION variable set to 0.1, which means only 10% of my queries were getting profiles generated.  This meant that most of the time gae_mini_profiler was failing with a javascript error, because the appstats variable was null.
+1. What's the license? [MIT licensed](http://en.wikipedia.org/wiki/MIT_License).
+2. I had my appstats_RECORD_FRACTION variable set to 0.1, which means only 10% of my queries were getting profiles generated.  This meant that most of the time gae_mini_profiler was failing with a javascript error, because the appstats variable was null.
 
     If you are using appengine_config.py to customize Appstats behavior you should add this to the top of your "appstats_should_record" method.
 <pre>def appstats_should_record(env):
