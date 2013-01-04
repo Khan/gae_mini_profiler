@@ -12,15 +12,17 @@ def cleanup(request, response):
     if "MemcacheGetRequest" in request:
         request = request["MemcacheGetRequest"]
         response = response["MemcacheGetResponse"]
-        request_short = memcache_get(request)
-        response_short, miss = memcache_get_response(response)
-    elif "MemcacheSetRequest" in request:
+        if request:
+            request_short = memcache_get(request)
+        if response:
+            response_short, miss = memcache_get_response(response)
+    elif "MemcacheSetRequest" in request and request["MemcacheSetRequest"]:
         request_short = memcache_set(request["MemcacheSetRequest"])
-    elif "Query" in request:
+    elif "Query" in request and request["Query"]:
         request_short = datastore_query(request["Query"])
-    elif "GetRequest" in request:
+    elif "GetRequest" in request and request["GetRequest"]:
         request_short = datastore_get(request["GetRequest"])
-    elif "PutRequest" in request:
+    elif "PutRequest" in request and request["PutRequest"]:
         request_short = datastore_put(request["PutRequest"])
     # todo:
     # TaskQueueBulkAddRequest
@@ -30,24 +32,52 @@ def cleanup(request, response):
     return request_short, response_short, miss
 
 def memcache_get_response(response):
-    response_miss = 0
-    items = response['item_']
+    """Pretty-format a memcache.get() response.
+
+    Arguments:
+      response - The memcache.get() response object, e.g.
+        {'item': [{'Item': {'flags': '0L', 'key': 'memcache_key', ...
+
+    Returns:
+      The tuple (value, miss) where the "value" is the value of the
+      memcache.get() response as a string. If there are multiple response
+      values, as when multiple keys are passed in, the values are separated by
+      newline characters. "miss" is 1 if there were no items returned from
+      memcache and 0 otherwise.
+    """
+    if 'item' not in response or not response['item']:
+        return None, 1
+
+    items = response['item']
     for i, item in enumerate(items):
         if type(item) == dict:
-            item = item['MemcacheGetResponse_Item']['value_']
+            if 'MemcacheGetResponse_Item' in item:
+                # This key exists in dev and in the 'python' production runtime.
+                item = item['MemcacheGetResponse_Item']['value']
+            else:
+                # But it's a different key in the 'python27' production runtime.
+                item = item['Item']['value']
             item = truncate(repr(item))
             items[i] = item
     response_short = "\n".join(items)
-    if not items:
-        response_miss = 1
-    return response_short, response_miss
+    return response_short, 0
 
 def memcache_get(request):
-    keys = request['key_']
+    """Pretty-format a memcache.get() request.
+
+    Arguments:
+      request - The memcache.get() request object, i.e.
+        {'key': ['memcache_key']}
+
+    Returns:
+      The keys of the memcache.get() response as a string. If there are
+      multiple keys, they are separated by newline characters.
+    """
+    keys = request['key']
     request_short = "\n".join([truncate(k) for k in keys])
     namespace = ''
-    if 'name_space_' in request:
-        namespace = request['name_space_']
+    if 'name_space' in request:
+        namespace = request['name_space']
         if len(keys) > 1:
             request_short += '\n'
         else:
@@ -56,12 +86,30 @@ def memcache_get(request):
     return request_short
 
 def memcache_set(request):
-    keys = [truncate(i["MemcacheSetRequest_Item"]["key_"]) for i in request["item_"]]
+    """Pretty-format a memcache.set() request.
+
+    Arguments:
+      request - The memcache.set() request object, e.g.,
+        {'item': [{'Item': {'flags': '0L', 'key': 'memcache_key' ...
+
+    Returns:
+      The keys of the memcache.get() response as a string. If there are
+      multiple keys, they are separated by newline characters.
+    """
+    keys = []
+    for i in request["item"]:
+        if "MemcacheSetRequest_Item" in i:
+            # This key exists in dev and in the 'python' production runtime.
+            key = i["MemcacheSetRequest_Item"]["key"]
+        else:
+            # But it's a different key in the 'python27' production runtime.
+            key = i["Item"]["key"]
+        keys.append(truncate(key))
     return "\n".join(keys)
 
 def datastore_query(query):
-    kind = query.get('kind_', 'UnknownKind')
-    count = query.get('count_', '')
+    kind = query.get('kind', 'UnknownKind')
+    count = query.get('count', '')
 
     filters_clean = datastore_query_filter(query)
     orders_clean = datastore_query_order(query)
@@ -94,40 +142,62 @@ def datastore_query_filter(query):
         6: "IN",
         7: "EXISTS",
     }
-    filters = query.get('filter_', [])
+    filters = query.get('filter', [])
     filters_clean = []
     for f in filters:
-        if 'Query_Filter' not in f:
+        if 'Query_Filter' in f:
+            # This key exists in dev and in the 'python' production runtime.
+            f = f["Query_Filter"]
+        elif 'Filter' in f:
+            # But it's a different key in the 'python27' production runtime.
+            f = f["Filter"]
+        else:
+            # Filters are optional, so there might be no filter at all.
             continue
-        f = f["Query_Filter"]
-        op = _Operator_NAMES[int(f.get('op_', 0))]
-        props = f["property_"]
+        op = _Operator_NAMES[int(f.get('op', 0))]
+        props = f["property"]
         for p in props:
             p = p["Property"]
-            name = p["name_"] if "name_" in p else "UnknownName"
+            name = p["name"] if "name" in p else "UnknownName"
 
-            if 'value_' in p:
+            if 'value' in p:
 
-                propval = p['value_']['PropertyValue']
+                propval = p['value']['PropertyValue']
 
-                if 'stringvalue_' in propval:
-                    value = propval["stringvalue_"]
-                elif 'referencevalue_' in propval:
-                    ref = propval['referencevalue_']['PropertyValue_ReferenceValue']
-                    els = ref['pathelement_']
+                if 'stringvalue' in propval:
+                    value = propval["stringvalue"]
+                elif 'referencevalue' in propval:
+                    if 'PropertyValue_ReferenceValue' in propval['referencevalue']:
+                        # This key exists in dev and in the 'python' production runtime.
+                        ref = propval['referencevalue']['PropertyValue_ReferenceValue']
+                    else:
+                        # But it's a different key in the 'python27' production runtime.
+                        ref = propval['referencevalue']['ReferenceValue']
+                    els = ref['pathelement']
                     paths = []
                     for el in els:
-                        path = el['PropertyValue_ReferenceValuePathElement']
-                        paths.append("%s(%s)" % (path['type_'], id_or_name(path)))
+                        if 'PropertyValue_ReferenceValuePathElement' in el:
+                            # This key exists in dev and in the 'python' production runtime.
+                            path = el['PropertyValue_ReferenceValuePathElement']
+                        else:
+                            # But it's a different key in the 'python27' production runtime.
+                            path = el['ReferenceValuePathElement']
+                        paths.append("%s(%s)" % (path['type'], id_or_name(path)))
                     value = "->".join(paths)
-                elif 'booleanvalue_' in propval:
-                    value = propval["booleanvalue_"]
-                elif 'uservalue_' in propval:
-                    value = 'User(' + propval['uservalue_']['PropertyValue_UserValue']['email_'] + ')'
+                elif 'booleanvalue' in propval:
+                    value = propval["booleanvalue"]
+                elif 'uservalue' in propval:
+                    if 'PropertyValue_UserValue' in propval['uservalue']:
+                        # This key exists in dev and in the 'python' production runtime.
+                        email = propval['uservalue']['PropertyValue_UserValue']['email']
+                    else:
+                        # But it's a different key in the 'python27' production runtime.
+                        email = propval['uservalue']['UserValue']['email']
+                    value = 'User(%s)' % email
                 elif '...' in propval:
                     value = '...'
-                elif 'int64value_' in propval:
-                    value = propval["int64value_"]
+                elif 'int64value' in propval:
+                    value = propval["int64value"]
                 else:
                     raise Exception(propval)
             else:
@@ -136,7 +206,7 @@ def datastore_query_filter(query):
     return filters_clean
 
 def datastore_query_order(query):
-    orders = query.get('order_', [])
+    orders = query.get('order', [])
     _Direction_NAMES = {
         0: "?DIR",
         1: "ASC",
@@ -144,20 +214,25 @@ def datastore_query_order(query):
     }
     orders_clean = []
     for order in orders:
-        order = order['Query_Order']
-        direction = _Direction_NAMES[int(order.get('direction_', 0))]
-        prop = order.get('property_', 'UnknownProperty')
+        if 'Query_Order' in order:
+            # This key exists in dev and in the 'python' production runtime.
+            order = order['Query_Order']
+        else:
+            # But it's a different key in the 'python27' production runtime.
+            order = order['Order']
+        direction = _Direction_NAMES[int(order.get('direction', 0))]
+        prop = order.get('property', 'UnknownProperty')
         orders_clean.append((prop, direction))
     return orders_clean
 
 def id_or_name(path):
-    if 'name_' in path:
-        return path['name_']
+    if 'name' in path:
+        return path['name']
     else:
-        return path['id_']
+        return path['id']
 
 def datastore_get(request):
-    keys = request["key_"]
+    keys = request["key"]
     if len(keys) > 1:
         keylist = cleanup_key(keys.pop(0))
         for key in keys:
@@ -170,19 +245,24 @@ def cleanup_key(key):
     if 'Reference' not in key: 
         #sometimes key is passed in as '...'
         return key
-    els = key['Reference']['path_']['Path']['element_']
+    els = key['Reference']['path']['Path']['element']
     paths = []
     for el in els:
-        path = el['Path_Element']
-        paths.append("%s(%s)" % (path['type_'] if 'type_' in path 
+        if 'Path_Element' in el:
+            # This key exists in dev and in the 'python' production runtime.
+            path = el['Path_Element']
+        else:
+            # But it's a different key in the 'python27' production runtime.
+            path = el['Element']
+        paths.append("%s(%s)" % (path['type'] if 'type' in path 
                      else 'UnknownType', id_or_name(path)))
     return "->".join(paths)
 
 def datastore_put(request):
-    entities = request["entity_"]
+    entities = request["entity"]
     keys = []
     for entity in entities:
-        keys.append(cleanup_key(entity["EntityProto"]["key_"]))
+        keys.append(cleanup_key(entity["EntityProto"]["key"]))
     return "\n".join(keys)
 
 def truncate(value, limit=100):

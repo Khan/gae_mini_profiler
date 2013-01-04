@@ -20,9 +20,33 @@
             </div>
         </div>
 
-        {{if simple_timing}}
+        <div class="settings" style="display:none;">
+            <table>
+                <tr>
+                    <th>CPU profiling</th>
+                    <th>RPC profiling</th>
+                </tr>
+                <tr>
+                    <td>
+                        <input type="radio" id="cpu_instrumented" name="cpu" value="instrumented"/><label for="cpu_instrumented"> instrumented</label><br>
+                        <input type="radio" id="cpu_sampling" name="cpu" value="sampling"/><label for="cpu_sampling"> sampling</label><br>
+                        <input type="radio" id="cpu_disabled" name="cpu" value=""/><label for="cpu_disabled"> disabled</label>
+                    </td>
+                    <td>
+                        <input type="radio" id="rpc_enabled" name="rpc" value="rpc"/><label for="rpc_enabled"> enabled</label><br>
+                        <input type="radio" id="rpc_disabled" name="rpc" value=""/><label for="rpc_disabled"> disabled</label>
+                    </td>
+                </tr>
+                <tr class="tips">
+                    <td>CPU profiling either keeps track of all function calls and their timings (instrumented) or periodically examines the call stack to figure out in which functions time is being spent during a request (sampling).</td>
+                    <td>RPC profiling monitors all remote procedure calls (think datastore queries, memcache accesses, and URL fetches) and their timings.</td>
+                </tr>
+            </table>
+        </div>
 
-        <div class="simple-timing">Detailed timing information is disabled. <a href="#" class="toggle-enabled">Enable</a>.</div>
+        {{if mode == "simple"}}
+
+        <div class="simple-timing">Detailed timing information is disabled. <a class="settings-link uses_script" href="#">Settings</a></div>
 
         {{else}}
 
@@ -30,19 +54,32 @@
             {{if temporary_redirect}}
                 <span class="redirect" title="Temporary redirect">&#8623; (302 redirect)</span>
             {{/if}}
-            <span class="date">${s_dt}</span>
-            - <a class="share" href="/gae_mini_profiler/shared?request_id=${encodeURIComponent(request_id)}">Share</a>
-            - <a class="toggle-enabled" href="#">Off</a>
+            <a href="/gae_mini_profiler/shared?request_id=${encodeURIComponent(request_id)}"><span class="date">${s_dt}</span></a>
+            - <a class="settings-link uses_script" href="#">Settings</a>
         </div>
+
+        {{if !GaeMiniProfiler.isCpuEnabled(mode)}}
+
+        <div class="expand">
+            <em>CPU profiling is disabled.</em>
+        </div>
+
+        {{else}}
 
         <div class="expand">
             <a href="#profile-link" class="profile-link link uses_script">Profile</a>
             <div class="summary">
+                {{if GaeMiniProfiler.isInstrumentedEnabled(mode)}}
                 ${profiler_results.total_time} <span class="ms">ms</span> spent in ${profiler_results.total_call_count} function calls
+                {{else}}
+                ${profiler_results.total_samples} sampled stack trace{{if profiler_results.total_samples != 1}}s{{/if}}
+                {{/if}}
             </div>
         </div>
 
         <div class="profiler-details details fancy-scrollbar" style="display:none;">
+            {{if GaeMiniProfiler.isInstrumentedEnabled(mode)}}
+
             <table>
                 <thead>
                     <tr>
@@ -87,21 +124,60 @@
 
                 {{/each}}
             </table>
+
+            {{else}}
+
+            {{if profiler_results.is_dev_server}}
+            <span class="warn">
+                <nobr>The sampling profiler only works in production. These are just examples.</nobr><br>
+                <nobr>Use the instrumented profiler for CPU profiling of App Engine's dev server.</nobr>
+            </span>
+            {{/if}}
+
+            <table>
+                <thead>
+                    <tr>
+                        <th class="left">line</th>
+                        <th class="right headerSortDown"><nobr># of samples</nobr></th>
+                        <th class="right headerSortDown"><nobr>% of samples</nobr></th>
+                    </tr>
+                </thead>
+                {{each profiler_results.calls}}
+
+                <tr>
+                    <td title="${$value.func_desc}">${$value.func_desc_short}</td>
+                    <td class="right">
+                        ${$value.count_samples}
+                    </td>
+                    <td class="right">${$value.per_samples}</td>
+                </tr>
+
+                {{/each}}
+            </table>
+
+
+            {{/if}}
         </div>
+
+        {{/if}}
+
+        {{if !GaeMiniProfiler.isRpcEnabled(mode)}}
+
+        <div class="expand">
+            <em>Remote Procedure Call profiling is disabled.</em>
+        </div>
+
+        {{else}}
 
         <div class="expand">
             <a href="#rpc-link" class="rpc-link link uses_script">Remote Procedure Calls</a>
             <div class="summary">
-            {{if appstats_results.appstats_available}}
                     ${appstats_results.total_time} <span class="ms">ms</span>
                     spent in ${appstats_results.total_call_count} RPC{{if appstats_results.total_call_count != 1}}s{{/if}}
 
                     {{if appstats_results.likely_dupes}}
-                        <span class="dupe">(likely dupes)</span>
+                        <span class="warn">(likely dupes)</span>
                     {{/if}}
-            {{else}}
-            		Appstats are unavailable
-            {{/if}}
             </div>
         </div>
 
@@ -109,7 +185,7 @@
 
             <a class="appstats-link" target="_appstats" href="/_ah/stats/details?time=${appstats_results.appstats_key}">Full Appstats Details</a>
 
-            {{if appstats_results.appstats_available && appstats_results.calls.length}}
+            {{if appstats_results.calls.length}}
             <table class="rpc-service-totals">
                 <thead>
                     <tr>
@@ -157,7 +233,7 @@
                     <td class="right">${$value.total_time}</td>
                     <td>
                         {{if $value.likely_dupe}}
-                            <span class="dupe">Likely duplicate of previous RPC</span>
+                            <span class="warn">Likely duplicate of previous RPC</span>
                         {{/if}}
                         <span title="${$value.request}">
                             ${$value.request_short}
@@ -173,6 +249,8 @@
             </table>
             {{/if}}
         </div>
+
+        {{/if}}
 
         <div class="expand">
             <a href="#logs-link" class="logs-link link uses_script">Logs</a>

@@ -1,9 +1,23 @@
+
 var GaeMiniProfiler = {
+
+    // Profiler modes match gae_mini_profiler.profiler.Mode's enum.
+    // TODO(kamens): switch this from an enum to a more sensible bitmask or
+    // other alternative that supports multiple settings without an exploding
+    // number of enums.
+    modes: {
+               SIMPLE: "simple",
+               CPU_INSTRUMENTED: "instrumented",
+               CPU_SAMPLING: "sampling",
+               RPC_ONLY: "rpc",
+               RPC_AND_CPU_INSTRUMENTED: "rpc_instrumented",
+               RPC_AND_CPU_SAMPLING: "rpc_sampling"
+    },
 
     init: function(requestId, fShowImmediately) {
         // Fetch profile results for any ajax calls
         // (see http://code.google.com/p/mvc-mini-profiler/source/browse/MvcMiniProfiler/UI/Includes.js)
-        jQuery(document).ajaxComplete(function (e, xhr, settings) {
+        $(document).ajaxComplete(function (e, xhr, settings) {
             if (xhr) {
                 var requestId = xhr.getResponseHeader('X-MiniProfiler-Id');
                 if (requestId) {
@@ -16,12 +30,80 @@ var GaeMiniProfiler = {
         GaeMiniProfiler.fetch(requestId, window.location.search, fShowImmediately);
     },
 
-    toggleEnabled: function(link) {
-        var disabled = !!jQuery.cookiePlugin("g-m-p-disabled");
+    /**
+     * Return the profiler mode being requested by the current browser cookie.
+     */
+    getCookieMode: function() {
+        var mode = $.cookiePlugin("g-m-p-mode");
 
-        jQuery.cookiePlugin("g-m-p-disabled", (disabled ? null : "1"), {path: '/'});
+        // Default to RPC + Instrumented
+        var valid = false;
+        for (var key in this.modes) {
+            if (mode == this.modes[key]) {
+                valid = true;
+                break;
+            }
+        }
+        if (!valid) {
+            mode = this.modes.RPC_AND_CPU_INSTRUMENTED;
+        }
 
-        jQuery(link).replaceWith("<em>" + (disabled ? "Enabled" : "Disabled") + "</em>");
+        return mode;
+    },
+
+    /**
+     * Set browser cookie for current profiler mode according to radio inputs.
+     */
+    setCookieMode: function(elLink) {
+        // Get current state of RPC/CPU profiler settings according to radios
+        var jel = $(elLink).closest(".g-m-p").find(".settings"),
+            rpcValue = jel.find("input:radio[name=rpc]:checked").val(),
+            cpuValue = jel.find("input:radio[name=cpu]:checked").val();
+
+        // Convert to format matching this.modes values.
+        var mode = "simple";
+        if (rpcValue && cpuValue) {
+            mode = rpcValue + "_" + cpuValue;
+        }
+        else {
+            mode = rpcValue || cpuValue || "simple";
+        }
+
+        // Set mode cookie for profiler to detect on next request
+        $.cookiePlugin("g-m-p-mode", mode, {path: '/', expires: 365});
+    },
+
+    /**
+     * True if profiler mode has enabled RPC profiling
+     */
+    isRpcEnabled: function(mode) {
+        return (mode == this.modes.RPC_ONLY ||
+                mode == this.modes.RPC_AND_CPU_INSTRUMENTED ||
+                mode == this.modes.RPC_AND_CPU_SAMPLING);
+    },
+
+    /**
+     * True if profiler mode has enabled CPU instrumentation
+     */
+    isInstrumentedEnabled: function(mode) {
+        return (mode == this.modes.CPU_INSTRUMENTED ||
+                mode == this.modes.RPC_AND_CPU_INSTRUMENTED);
+    },
+
+    /**
+     * True if profiler mode has enabled CPU sampling
+     */
+    isSamplingEnabled: function(mode) {
+        return (mode == this.modes.CPU_SAMPLING ||
+                mode == this.modes.RPC_AND_CPU_SAMPLING);
+    },
+
+    /**
+     * True if either CPU instrumentation or CPU sampling is enabled
+     */
+    isCpuEnabled: function(mode) {
+        return (GaeMiniProfiler.isInstrumentedEnabled(mode) ||
+                GaeMiniProfiler.isSamplingEnabled(mode));
     },
 
     appendRedirectIds: function(requestId, queryString) {
@@ -42,7 +124,7 @@ var GaeMiniProfiler = {
     fetch: function(requestId, queryString, fShowImmediately) {
         var requestIds = this.appendRedirectIds(requestId, queryString);
 
-        jQuery.get(
+        $.get(
                 "/gae_mini_profiler/request",
                 { "request_ids": requestIds.join(",") },
                 function(data) {
@@ -60,7 +142,7 @@ var GaeMiniProfiler = {
             var jCorner = this.renderCorner(data[ix]);
 
             if (!jCorner.data("attached")) {
-                jQuery('body')
+                $('body')
                     .append(jCorner)
                     .click(function(e) { return GaeMiniProfiler.collapse(e); });
                 jCorner
@@ -74,9 +156,9 @@ var GaeMiniProfiler = {
     },
 
     collapse: function(e) {
-        if (jQuery(".g-m-p").is(":visible")) {
-            jQuery(".g-m-p").slideUp("fast");
-            jQuery(".g-m-p-corner").slideDown("fast")
+        if ($(".g-m-p").is(":visible")) {
+            $(".g-m-p").slideUp("fast");
+            $(".g-m-p-corner").slideDown("fast")
                 .find(".expanded").removeClass("expanded");
             return false;
         }
@@ -85,19 +167,19 @@ var GaeMiniProfiler = {
     },
 
     expand: function(elEntry, data) {
-        var jPopup = jQuery(".g-m-p");
+        var jPopup = $(".g-m-p");
 
         if (jPopup.length)
             jPopup.remove();
         else
-            jQuery(document).keyup(function(e) { if (e.which == 27) GaeMiniProfiler.collapse() });
+            $(document).keyup(function(e) { if (e.which == 27) GaeMiniProfiler.collapse() });
 
         jPopup = this.renderPopup(data);
-        jQuery('body').append(jPopup);
+        $('body').append(jPopup);
 
-        var jCorner = jQuery(".g-m-p-corner");
+        var jCorner = $(".g-m-p-corner");
         jCorner.find(".expanded").removeClass("expanded");
-        jQuery(elEntry).addClass("expanded");
+        $(elEntry).addClass("expanded");
 
         jPopup
             .find(".profile-link")
@@ -107,19 +189,21 @@ var GaeMiniProfiler = {
             .find(".logs-link")
                 .click(function() { GaeMiniProfiler.toggleSection(this, ".logs-details"); return false; }).end()
             .find(".callers-link")
-                .click(function() { jQuery(this).parents("td").find(".callers").slideToggle("fast"); return false; }).end()
-            .find(".toggle-enabled")
-                .click(function() { GaeMiniProfiler.toggleEnabled(this); return false; }).end()
+                .click(function() { $(this).parents("td").find(".callers").slideToggle("fast"); return false; }).end()
+            .find(".settings-link")
+                .click(function() { GaeMiniProfiler.toggleSettings(this); return false; }).end()
+            .find(".settings input")
+                .change(function() { GaeMiniProfiler.setCookieMode(this); return false; }).end()
             .click(function(e) { e.stopPropagation(); })
             .css("left", jCorner.offset().left + jCorner.width() + 18)
             .slideDown("fast");
 
         var toggleLogRows = function(level) {
             var names = {10:'Debug', 20:'Info', 30:'Warning', 40:'Error', 50:'Critical'};
-            jQuery('#slider .minlevel-text').text(names[level]);
-            jQuery('#slider .loglevel').attr('class', 'loglevel ll'+level);
+            $('#slider .minlevel-text').text(names[level]);
+            $('#slider .loglevel').attr('class', 'loglevel ll'+level);
             for (var i = 10; i<=50; i += 10) {
-                var rows = jQuery('tr.ll'+i);
+                var rows = $('tr.ll'+i);
                 if (i<level)
                     rows.hide();
                 else
@@ -129,9 +213,9 @@ var GaeMiniProfiler = {
 
         var initLevel = 10;
 
-        if (jQuery('#slider .control').slider) {
+        if ($('#slider .control').slider) {
             initLevel = 30;
-            jQuery('#slider .control').slider({
+            $('#slider .control').slider({
                 value: initLevel,
                 min: 10,
                 max: 50,
@@ -146,20 +230,47 @@ var GaeMiniProfiler = {
         toggleLogRows(initLevel);
     },
 
+    toggleSettings: function(elLink) {
+        var mode = this.getCookieMode();
+
+        var cpuSelector = "#cpu_disabled";
+        if (this.isInstrumentedEnabled(mode)) {
+            cpuSelector = "#cpu_instrumented";
+        }
+        else if (this.isSamplingEnabled(mode)) {
+            cpuSelector = "#cpu_sampling";
+        }
+
+        var rpcSelector = "#rpc_disabled";
+        if (this.isRpcEnabled(mode)) {
+            rpcSelector = "#rpc_enabled";
+        }
+        
+        $(elLink).closest(".g-m-p").find(".settings")
+            .find(cpuSelector)
+                .attr("checked", "checked")
+                .end()
+            .find(rpcSelector)
+                .attr("checked", "checked")
+                .end()
+        .slideToggle("fast");
+    },
+
     toggleSection: function(elLink, selector) {
 
-        var fWasVisible = jQuery(".g-m-p " + selector).is(":visible");
+        var fWasVisible = $(selector).is(":visible");
 
-        jQuery(".g-m-p .expand").removeClass("expanded");
-        jQuery(".g-m-p .details:visible").slideUp(50);
+        $(".expand").removeClass("expanded");
+        $(".details:visible").slideUp(50)
 
         if (!fWasVisible) {
-            jQuery(elLink).parents(".expand").addClass("expanded");
-            jQuery(selector).slideDown("fast", function() {
+            $(elLink).parents(".expand").addClass("expanded");
+            $(selector).slideDown("fast", function() {
 
-                var jTable = jQuery(this).find("table");
+                var jTable = $(this).find("table");
 
-                if (jTable.length && !jTable.data("table-sorted")) {
+                if (jTable.length && jTable.find("tbody").length &&
+                    !jTable.data("table-sorted")) {
                     jTable
                         .tablesorter()
                         .data("table-sorted", true);
@@ -172,28 +283,28 @@ var GaeMiniProfiler = {
     renderPopup: function(data) {
         if (data.logs) {
             var counts = {}
-            jQuery.each(data.logs, function(i, log) {
+            $.each(data.logs, function(i, log) {
                 var c = counts[log[0]] || 0;
                 counts[log[0]] = c + 1;
             });
             data.log_count = counts;
         }
 
-        return jQuery("#profilerTemplate").tmplPlugin(data);
+        return $("#profilerTemplate").tmplPlugin(data);
     },
 
     renderCorner: function(data) {
         if (data && data.profiler_results) {
-            var jCorner = jQuery(".g-m-p-corner");
+            var jCorner = $(".g-m-p-corner");
 
             var fFirst = false;
             if (!jCorner.length) {
-                jCorner = jQuery("#profilerCornerTemplate").tmplPlugin();
+                jCorner = $("#profilerCornerTemplate").tmplPlugin();
                 fFirst = true;
             }
 
             return jCorner.append(
-                    jQuery("#profilerCornerEntryTemplate")
+                    $("#profilerCornerEntryTemplate")
                         .tmplPlugin(data)
                         .addClass(fFirst ? "" : "ajax")
                         .click(function() { GaeMiniProfiler.expand(this, data); return false; })
@@ -208,9 +319,9 @@ var GaeMiniProfilerTemplate = {
     template: null,
 
     init: function(callback) {
-        jQuery.get("/gae_mini_profiler/static/js/template.tmpl", function (data) {
+        $.get("/gae_mini_profiler/static/js/template.tmpl", function (data) {
             if (data) {
-                jQuery('body').append(data);
+                $('body').append(data);
                 callback();
             }
         });

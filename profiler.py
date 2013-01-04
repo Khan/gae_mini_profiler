@@ -1,9 +1,15 @@
+from __future__ import with_statement
+
 import datetime
 import time
 import logging
 import os
-import cPickle as pickle
 import re
+
+try:
+    import threading
+except ImportError:
+    import dummy_threading as threading
 
 # use json in Python 2.7, fallback to simplejson for Python 2.5
 try:
@@ -15,22 +21,108 @@ import StringIO
 from types import GeneratorType
 import zlib
 
-from google.appengine.ext.webapp import template, RequestHandler
 from google.appengine.api import memcache
+from google.appengine.ext.appstats import recording
+from google.appengine.ext.webapp import RequestHandler
 
 import unformatter
 from pprint import pformat
-import cleanup
 import cookies
+import pickle
 
 import gae_mini_profiler.config
-if os.environ["SERVER_SOFTWARE"].startswith("Devel"):
+from gae_mini_profiler import util
+
+dev_server = os.environ["SERVER_SOFTWARE"].startswith("Devel")
+if dev_server:
     config = gae_mini_profiler.config.ProfilerConfigDevelopment
 else:
     config = gae_mini_profiler.config.ProfilerConfigProduction
 
-# request_id is a per-request identifier accessed by a couple other pieces of gae_mini_profiler
-request_id = None
+
+class CurrentRequestId(object):
+    """A per-request identifier accessed by other pieces of mini profiler.
+    
+    It is managed as part of the middleware lifecycle."""
+
+    # In production use threading.local() to make request ids threadsafe
+    _local = threading.local()
+    _local.request_id = None
+
+    # On the devserver don't use threading.local b/c it's reset on Thread.start
+    dev_server_request_id = None
+
+    @staticmethod
+    def get():
+        if dev_server:
+            return CurrentRequestId.dev_server_request_id
+        else:
+            return CurrentRequestId._local.request_id
+
+    @staticmethod
+    def set(request_id):
+        if dev_server:
+            CurrentRequestId.dev_server_request_id = request_id
+        else:
+            CurrentRequestId._local.request_id = request_id
+
+
+class Mode(object):
+    """Possible profiler modes.
+    
+    TODO(kamens): switch this from an enum to a more sensible bitmask or other
+    alternative that supports multiple settings without an exploding number of
+    enums."""
+
+    SIMPLE = "simple"  # Simple start/end timing for the request as a whole
+    CPU_INSTRUMENTED = "instrumented"  # Profile all function calls
+    CPU_SAMPLING = "sampling"  # Sample call stacks
+    RPC_ONLY = "rpc"  # Profile all RPC calls
+    RPC_AND_CPU_INSTRUMENTED = "rpc_instrumented" # RPCs and all fxn calls
+    RPC_AND_CPU_SAMPLING = "rpc_sampling" # RPCs and sample call stacks
+
+    @staticmethod
+    def get_mode(environ):
+        """Get the profiler mode requested by current request's headers &
+        cookies."""
+        if "HTTP_G_M_P_MODE" in environ:
+            mode = environ["HTTP_G_M_P_MODE"]
+        else:
+            mode = cookies.get_cookie_value("g-m-p-mode")
+
+        import logging
+        logging.critical("FOUND MODE: %s" % mode)
+
+        if (mode not in [
+                Mode.SIMPLE,
+                Mode.CPU_INSTRUMENTED,
+                Mode.CPU_SAMPLING,
+                Mode.RPC_ONLY,
+                Mode.RPC_AND_CPU_INSTRUMENTED,
+                Mode.RPC_AND_CPU_SAMPLING]):
+            mode = Mode.RPC_AND_CPU_INSTRUMENTED
+
+        return mode
+
+    @staticmethod
+    def is_rpc_enabled(mode):
+        return mode in [
+                Mode.RPC_ONLY,
+                Mode.RPC_AND_CPU_INSTRUMENTED,
+                Mode.RPC_AND_CPU_SAMPLING];
+
+    @staticmethod
+    def is_sampling_enabled(mode):
+        return mode in [
+                Mode.CPU_SAMPLING,
+                Mode.RPC_AND_CPU_SAMPLING];
+
+    @staticmethod
+    def is_instrumented_enabled(mode):
+        return mode in [
+                Mode.CPU_INSTRUMENTED,
+                Mode.RPC_AND_CPU_INSTRUMENTED];
+
 
 class SharedStatsHandler(RequestHandler):
 
@@ -42,11 +134,22 @@ class SharedStatsHandler(RequestHandler):
             self.response.out.write("Profiler stats no longer exist for this request.")
             return
 
-        self.response.out.write(
-            template.render(path, {
-                "request_id": request_id
-            })
-        )
+        # Late-bind templatetags to avoid a circular import.
+        # TODO(chris): remove late-binding once templatetags has been teased
+        # apart and no longer contains so many broad dependencies.
+
+        import templatetags
+        profiler_includes = templatetags.profiler_includes_request_id(request_id, True)
+
+        # We are not using a templating engine here to avoid pulling in Jinja2
+        # or Django. It's an admin page anyway, and all other templating lives
+        # in javascript right now.
+
+        with open(path, 'rU') as f:
+            template = f.read()
+
+        template = template.replace('{{profiler_includes}}', profiler_includes)
+        self.response.out.write(template)
 
 class RequestStatsHandler(RequestHandler):
 
@@ -85,10 +188,10 @@ class RequestStatsHandler(RequestHandler):
 class RequestStats(object):
 
     serialized_properties = ["request_id", "url", "url_short", "s_dt",
-                             "profiler_results", "appstats_results", "simple_timing",
+                             "profiler_results", "appstats_results", "mode",
                              "temporary_redirect", "logs"]
 
-    def __init__(self, request_id, environ, middleware):
+    def __init__(self, request_id, environ, profiler):
         self.request_id = request_id
 
         self.url = environ.get("PATH_INFO")
@@ -99,14 +202,14 @@ class RequestStats(object):
         if len(self.url_short) > 26:
             self.url_short = self.url_short[:26] + "..."
 
-        self.simple_timing = middleware.simple_timing
+        self.mode = profiler.mode
         self.s_dt = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        self.profiler_results = RequestStats.calc_profiler_results(middleware)
-        self.appstats_results = RequestStats.calc_appstats_results(middleware)
-        self.logs = middleware.logs
+        self.profiler_results = profiler.profiler_results()
+        self.appstats_results = profiler.appstats_results()
+        self.logs = profiler.logs
 
-        self.temporary_redirect = middleware.temporary_redirect
+        self.temporary_redirect = profiler.temporary_redirect
         self.disabled = False
 
     def store(self):
@@ -134,305 +237,140 @@ class RequestStats(object):
             return None
         return "__gae_mini_profiler_request_%s" % request_id
 
-    @staticmethod
-    def seconds_fmt(f):
-        return RequestStats.milliseconds_fmt(f * 1000)
 
-    @staticmethod
-    def milliseconds_fmt(f):
-        return ("%.5f" % f).rstrip("0").rstrip(".")
+class RequestProfiler(object):
+    """Profile a single request."""
 
-    @staticmethod
-    def short_method_fmt(s):
-        return s[s.rfind("/") + 1:]
-
-    @staticmethod
-    def short_rpc_file_fmt(s):
-        if not s:
-            return ""
-        return s[s.find("/"):]
-
-    @staticmethod
-    def calc_profiler_results(middleware):
-
-        if middleware.simple_timing:
-            return {
-                "total_time": RequestStats.seconds_fmt(middleware.end - middleware.start),
-            }
-
-        import pstats
-
-        # Make sure nothing is printed to stdout
-        output = StringIO.StringIO()
-        stats = pstats.Stats(middleware.prof, stream=output)
-        stats.sort_stats("cumulative")
-
-        results = {
-            "total_call_count": stats.total_calls,
-            "total_time": RequestStats.seconds_fmt(stats.total_tt),
-            "calls": []
-        }
-
-        width, list_func_names = stats.get_print_list([80])
-        for func_name in list_func_names:
-            primitive_call_count, total_call_count, total_time, cumulative_time, callers = stats.stats[func_name]
-
-            func_desc = pstats.func_std_string(func_name)
-
-            callers_names = map(lambda func_name: pstats.func_std_string(func_name), callers.keys())
-            callers_desc = map(
-                    lambda name: {"func_desc": name, "func_desc_short": RequestStats.short_method_fmt(name)},
-                    callers_names)
-
-            results["calls"].append({
-                "primitive_call_count": primitive_call_count,
-                "total_call_count": total_call_count,
-                "total_time": RequestStats.seconds_fmt(total_time),
-                "per_call": RequestStats.seconds_fmt(total_time / total_call_count) if total_call_count else "",
-                "cumulative_time": RequestStats.seconds_fmt(cumulative_time),
-                "per_call_cumulative": RequestStats.seconds_fmt(cumulative_time / primitive_call_count) if primitive_call_count else "",
-                "func_desc": func_desc,
-                "func_desc_short": RequestStats.short_method_fmt(func_desc),
-                "callers_desc": callers_desc,
-            })
-
-        output.close()
-
-        return results
-
-    @staticmethod
-    def calc_appstats_results(middleware):
-        if middleware.recorder:
-
-            total_call_count = 0
-            total_time = 0
-            calls = []
-            service_totals_dict = {}
-            likely_dupes = False
-            end_offset_last = 0
-
-            requests_set = set()
-
-            appstats_key = long(middleware.recorder.start_timestamp * 1000)
-
-            for trace in middleware.recorder.traces:
-                total_call_count += 1
-
-                total_time += trace.duration_milliseconds()
-
-                # Don't accumulate total RPC time for traces that overlap asynchronously
-                if trace.start_offset_milliseconds() < end_offset_last:
-                    total_time -= (end_offset_last - trace.start_offset_milliseconds())
-                end_offset_last = trace.start_offset_milliseconds() + trace.duration_milliseconds()
-
-                service_prefix = trace.service_call_name()
-
-                if "." in service_prefix:
-                    service_prefix = service_prefix[:service_prefix.find(".")]
-
-                if service_prefix not in service_totals_dict:
-                    service_totals_dict[service_prefix] = {
-                        "total_call_count": 0,
-                        "total_time": 0,
-                        "total_misses": 0,
-                    }
-
-                service_totals_dict[service_prefix]["total_call_count"] += 1
-                service_totals_dict[service_prefix]["total_time"] += trace.duration_milliseconds()
-
-                stack_frames_desc = []
-                for frame in trace.call_stack_list():
-                    stack_frames_desc.append("%s:%s %s" %
-                            (RequestStats.short_rpc_file_fmt(frame.class_or_file_name()),
-                                frame.line_number(),
-                                frame.function_name()))
-
-                request = trace.request_data_summary()
-                response = trace.response_data_summary()
-
-                likely_dupe = request in requests_set
-                likely_dupes = likely_dupes or likely_dupe
-                requests_set.add(request)
-
-                request_short = request_pretty = None
-                response_short = response_pretty = None
-                miss = 0
-                try:
-                    request_object = unformatter.unformat(request)
-                    response_object = unformatter.unformat(response)
-
-                    request_short, response_short, miss = cleanup.cleanup(request_object, response_object)
-
-                    request_pretty = pformat(request_object)
-                    response_pretty = pformat(response_object)
-                except Exception, e:
-                    logging.warning("Prettifying RPC calls failed.\n%s", e)
-
-                service_totals_dict[service_prefix]["total_misses"] += miss
-
-                calls.append({
-                    "service": trace.service_call_name(),
-                    "start_offset": RequestStats.milliseconds_fmt(trace.start_offset_milliseconds()),
-                    "total_time": RequestStats.milliseconds_fmt(trace.duration_milliseconds()),
-                    "request": request_pretty or request,
-                    "response": response_pretty or response,
-                    "request_short": request_short or cleanup.truncate(request),
-                    "response_short": response_short or cleanup.truncate(response),
-                    "stack_frames_desc": stack_frames_desc,
-                    "likely_dupe": likely_dupe,
-                })
-
-            service_totals = []
-            for service_prefix in service_totals_dict:
-                service_totals.append({
-                    "service_prefix": service_prefix,
-                    "total_call_count": service_totals_dict[service_prefix]["total_call_count"],
-                    "total_misses": service_totals_dict[service_prefix]["total_misses"],
-                    "total_time": RequestStats.milliseconds_fmt(service_totals_dict[service_prefix]["total_time"]),
-                })
-            service_totals = sorted(service_totals, reverse=True, key=lambda service_total: float(service_total["total_time"]))
-
-            return  {
-                        "appstats_available": True,
-                        "total_call_count": total_call_count,
-                        "total_time": RequestStats.milliseconds_fmt(total_time),
-                        "calls": calls,
-                        "service_totals": service_totals,
-                        "likely_dupes": likely_dupes,
-                        "appstats_key": appstats_key,
-                    }
-
-        return { "appstats_available": False, }
-
-class ProfilerWSGIMiddleware(object):
-
-    def __init__(self, app):
-        template.register_template_library('gae_mini_profiler.templatetags')
-        self.app = app
-        self.app_clean = app
-        self.prof = None
-        self.recorder = None
+    def __init__(self, request_id, mode):
+        self.request_id = request_id
+        self.mode = mode
+        self.instrumented_prof = None
+        self.sampling_prof = None
+        self.appstats_prof = None
         self.temporary_redirect = False
         self.handler = None
         self.logs = None
-        self.simple_timing = False
         self.start = None
         self.end = None
 
-    def __call__(self, environ, start_response):
+    def profiler_results(self):
+        """Return the CPU profiler results for this request, if any.
+        
+        This will return a dictionary containing results for either the
+        sampling profiler, instrumented profiler results, or a simple
+        start/stop timer if both profilers are disabled."""
 
-        global request_id
-        request_id = None
+        total_time = util.seconds_fmt(self.end - self.start, 0)
+        results = {"total_time": total_time}
 
-        # Start w/ a non-profiled app at the beginning of each request
-        self.app = self.app_clean
-        self.prof = None
-        self.recorder = None
-        self.temporary_redirect = False
-        self.simple_timing = cookies.get_cookie_value("g-m-p-disabled") == "1"
+        if self.instrumented_prof:
+            results.update(self.instrumented_prof.results())
+        elif self.sampling_prof:
+            results.update(self.sampling_prof.results())
 
-        # Never profile calls to the profiler itself to avoid endless recursion.
-        if config.should_profile(environ) and not environ.get("PATH_INFO", "").startswith("/gae_mini_profiler/"):
+        return results
 
-            # Set a random ID for this request so we can look up stats later
-            import base64
-            request_id = base64.urlsafe_b64encode(os.urandom(5))
+    def appstats_results(self):
+        """Return the RPC profiler (appstats) results for this request, if any.
 
-            # Send request id in headers so jQuery ajax calls can pick
-            # up profiles.
-            def profiled_start_response(status, headers, exc_info = None):
+        This will return a dictionary containing results from appstats or an
+        empty result set if appstats profiling is disabled."""
 
-                if status.startswith("302 "):
-                    # Temporary redirect. Add request identifier to redirect location
-                    # so next rendered page can show this request's profile.
-                    headers = ProfilerWSGIMiddleware.headers_with_modified_redirect(environ, headers)
-                    self.temporary_redirect = True
+        results = {
+                "calls": [],
+                "total_time": 0,
+                }
 
-                # Append headers used when displaying profiler results from ajax requests
-                headers.append(("X-MiniProfiler-Id", request_id))
-                headers.append(("X-MiniProfiler-QS", environ.get("QUERY_STRING")))
+        if self.appstats_prof:
+            results.update(self.appstats_prof.results())
 
-                return start_response(status, headers, exc_info)
+        return results
 
-            if self.simple_timing:
+    def profile_start_response(self, app, environ, start_response):
+        """Collect and store statistics for a single request.
 
-                # Detailed recording is disabled. Just track simple start/stop time.
-                self.start = time.clock()
+        Use this method from middleware in place of the standard
+        request-serving pattern. Do:
 
-                result = self.app(environ, profiled_start_response)
-                for value in result:
-                    yield value
+           profiler = RequestProfiler(...)
+           return profiler(app, environ, start_response)
 
-                self.end = time.clock()
+        Instead of:
 
-            else:
+           return app(environ, start_response)
 
-                # Add logging handler
-                self.add_handler()
+        Depending on the mode, this method gathers timing information
+        and an execution profile and stores them in the datastore for
+        later access.
+        """
 
-                # Monkey patch appstats.formatting to fix string quoting bug
-                # See http://code.google.com/p/googleappengine/issues/detail?id=5976
-                import unformatter.formatting
-                import google.appengine.ext.appstats.formatting
-                google.appengine.ext.appstats.formatting._format_value = unformatter.formatting._format_value
+        # Always track simple start/stop time.
+        self.start = time.time()
 
-                # Configure AppStats output, keeping a high level of request
-                # content so we can detect dupe RPCs more accurately
-                from google.appengine.ext.appstats import recording
-                recording.config.MAX_REPR = 750
+        if self.mode == Mode.SIMPLE:
 
-                # Turn on AppStats monitoring for this request
-                old_app = self.app
-                def wrapped_appstats_app(environ, start_response):
-                    # Use this wrapper to grab the app stats recorder for RequestStats.save()
-
-                    if recording.recorder_proxy.has_recorder_for_current_request():
-                        self.recorder = recording.recorder_proxy.get_for_current_request()
-
-                    return old_app(environ, start_response)
-                self.app = recording.appstats_wsgi_middleware(wrapped_appstats_app)
-
-                # Turn on cProfile profiling for this request
-                import cProfile
-                self.prof = cProfile.Profile()
-
-                # Get profiled wsgi result
-                result = self.prof.runcall(lambda *args, **kwargs: self.app(environ, profiled_start_response), None, None)
-
-                # If we're dealing w/ a generator, profile all of the .next calls as well
-                if type(result) == GeneratorType:
-
-                    while True:
-                        try:
-                            yield self.prof.runcall(result.next)
-                        except StopIteration:
-                            break
-
-                else:
-                    for value in result:
-                        yield value
-
-                self.logs = self.get_logs(self.handler)
-                logging.getLogger().removeHandler(self.handler)
-                self.handler.stream.close()
-                self.handler = None
-
-            # Store stats for later access
-            RequestStats(request_id, environ, self).store()
-
-            # Just in case we're using up memory in the recorder and profiler
-            self.recorder = None
-            self.prof = None
-            request_id = None
-
-        else:
-            result = self.app(environ, start_response)
+            # Detailed recording is disabled.
+            result = app(environ, start_response)
             for value in result:
                 yield value
 
+        else:
+
+            # Add logging handler
+            self.add_handler()
+
+            if Mode.is_rpc_enabled(self.mode):
+                # Turn on AppStats monitoring for this request
+                from gae_mini_profiler import appstats_profiler
+                self.appstats_prof = appstats_profiler.Profile()
+                app = self.appstats_prof.wrap(app)
+
+            # By default, we create a placeholder wrapper function that
+            # simply calls whatever function it is passed as its first
+            # argument.
+            result_fxn_wrapper = lambda fxn: fxn()
+
+            if Mode.is_sampling_enabled(self.mode):
+                # Turn on sampling profiling for this request
+                from gae_mini_profiler import sampling_profiler
+                self.sampling_prof = sampling_profiler.Profile()
+                result_fxn_wrapper = self.sampling_prof.run
+
+            elif Mode.is_instrumented_enabled(self.mode):
+                # Turn on cProfile instrumented profiling for this request
+                from gae_mini_profiler import instrumented_profiler
+                self.instrumented_prof = instrumented_profiler.Profile()
+                result_fxn_wrapper = self.instrumented_prof.run
+
+            # Get wsgi result
+            result = result_fxn_wrapper(lambda: app(environ, start_response))
+
+            # If we're dealing w/ a generator, profile all of the .next calls as well
+            if type(result) == GeneratorType:
+
+                while True:
+                    try:
+                        yield result_fxn_wrapper(result.next)
+                    except StopIteration:
+                        break
+
+            else:
+                for value in result:
+                    yield value
+
+            self.logs = self.get_logs(self.handler)
+            logging.getLogger().removeHandler(self.handler)
+            self.handler.stream.close()
+            self.handler = None
+
+        self.end = time.time()
+
+        # Store stats for later access
+        RequestStats(self.request_id, environ, self).store()
+
     def add_handler(self):
         if self.handler is None:
-            self.handler = ProfilerWSGIMiddleware.create_handler()
+            self.handler = RequestProfiler.create_handler()
         logging.getLogger().addHandler(self.handler)
 
     @staticmethod
@@ -468,6 +406,72 @@ class ProfilerWSGIMiddleware(object):
 
         return lines
 
+class ProfilerWSGIMiddleware(object):
+
+    def __init__(self, app):
+        self.app = app
+
+    def __call__(self, environ, start_response):
+
+        CurrentRequestId.set(None)
+
+        # Never profile calls to the profiler itself to avoid endless recursion.
+        if (not config.should_profile(environ) or
+            environ.get("PATH_INFO", "").startswith("/gae_mini_profiler/")):
+            result = self.app(environ, start_response)
+            for value in result:
+                yield value
+        else:
+            # Set a random ID for this request so we can look up stats later
+            import base64
+            CurrentRequestId.set(base64.urlsafe_b64encode(os.urandom(5)))
+
+            # Send request id in headers so jQuery ajax calls can pick
+            # up profiles.
+            def profiled_start_response(status, headers, exc_info = None):
+
+                if status.startswith("302 "):
+                    # Temporary redirect. Add request identifier to redirect location
+                    # so next rendered page can show this request's profile.
+                    headers = ProfilerWSGIMiddleware.headers_with_modified_redirect(environ, headers)
+                    # Access the profiler in closure scope
+                    profiler.temporary_redirect = True
+
+                # Append headers used when displaying profiler results from ajax requests
+                headers.append(("X-MiniProfiler-Id", CurrentRequestId.get()))
+                headers.append(("X-MiniProfiler-QS", environ.get("QUERY_STRING")))
+
+                return start_response(status, headers, exc_info)
+
+            # As a simple form of rate-limiting, appstats protects all
+            # its work with a memcache lock to ensure that only one
+            # appstats request ever runs at a time, across all
+            # appengine instances.  (GvR confirmed this is the purpose
+            # of the lock).  So our attempt to profile will fail if
+            # appstats is running on another instance.  Boo-urns!  We
+            # just turn off the lock-checking for us, which means we
+            # don't rate-limit quite as much with the mini-profiler as
+            # we would do without.
+            old_memcache_add = memcache.add
+            old_memcache_delete = memcache.delete
+            memcache.add = (lambda key, *args, **kwargs:
+                                (True if key == recording.lock_key() 
+                                 else old_memcache_add(key, *args, **kwargs)))
+            memcache.delete = (lambda key, *args, **kwargs:
+                                   (True if key == recording.lock_key()
+                                    else old_memcache_delete(key, *args, **kwargs)))
+
+            try:
+                profiler = RequestProfiler(CurrentRequestId.get(),
+                                           Mode.get_mode(environ))
+                result = profiler.profile_start_response(self.app, environ, profiled_start_response)
+                for value in result:
+                    yield value
+            finally:
+                CurrentRequestId.set(None)
+                memcache.add = old_memcache_add
+                memcache.delete = old_memcache_delete
+
     @staticmethod
     def headers_with_modified_redirect(environ, headers):
         headers_modified = []
@@ -477,24 +481,19 @@ class ProfilerWSGIMiddleware(object):
                 reg = re.compile("mp-r-id=([^&]+)")
 
                 # Keep any chain of redirects around
-                request_id_chain = request_id
+                request_id_chain = CurrentRequestId.get()
                 match = reg.search(environ.get("QUERY_STRING"))
                 if match:
-                    request_id_chain = ",".join([match.groups()[0], request_id])
+                    request_id_chain = ",".join([match.groups()[0], request_id_chain])
 
                 # Remove any pre-existing miniprofiler redirect id
                 location = header[1]
                 location = reg.sub("", location)
-                location_hash = False
-                if "#" in location:
-                  location, location_hash = location.split("#", 1)
 
                 # Add current request id as miniprofiler redirect id
                 location += ("&" if "?" in location else "?")
                 location = location.replace("&&", "&")
                 location += "mp-r-id=%s" % request_id_chain
-                if location_hash:
-                  location += "#%s" % location_hash
 
                 headers_modified.append((header[0], location))
             else:
