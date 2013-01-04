@@ -32,12 +32,9 @@ import pickle
 
 import gae_mini_profiler.config
 from gae_mini_profiler import util
+from gae_mini_profiler import config
 
 dev_server = os.environ["SERVER_SOFTWARE"].startswith("Devel")
-if dev_server:
-    config = gae_mini_profiler.config.ProfilerConfigDevelopment
-else:
-    config = gae_mini_profiler.config.ProfilerConfigProduction
 
 
 class CurrentRequestId(object):
@@ -413,7 +410,7 @@ class ProfilerWSGIMiddleware(object):
         CurrentRequestId.set(None)
 
         # Never profile calls to the profiler itself to avoid endless recursion.
-        if (not config.should_profile(environ) or
+        if (not config.should_profile() or
             environ.get("PATH_INFO", "").startswith("/gae_mini_profiler/")):
             result = self.app(environ, start_response)
             for value in result:
