@@ -54,8 +54,6 @@ class Profile(object):
             results["calls"].append({
                 "primitive_call_count": primitive_call_count,
                 "total_call_count": total_call_count,
-                "total_time": util.seconds_fmt(total_time, 2),
-                "per_call": util.seconds_fmt(total_time / total_call_count, 2) if total_call_count else "",
                 "cumulative_time": util.seconds_fmt(cumulative_time, 2),
                 "per_call_cumulative": util.seconds_fmt(cumulative_time / primitive_call_count, 2) if primitive_call_count else "",
                 "func_desc": func_desc,

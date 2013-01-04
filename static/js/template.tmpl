@@ -84,17 +84,16 @@
                 <thead>
                     <tr>
                         <th class="left">function</th>
-                        <th class="right">calls</th>
                         <th class="right headerSortDown"><nobr>total ms</nobr></th>
+                        <th class="right">calls</th>
                         <th class="right"><nobr>total per call</nobr></th>
-                        <th class="right"><nobr>own ms</nobr></th>
-                        <th class="right"><nobr>own per call</nobr></th>
                     </tr>
                 </thead>
                 {{each profiler_results.calls}}
 
                 <tr>
                     <td title="${$value.func_desc}">${$value.func_desc_short}</td>
+                    <td class="right">${$value.cumulative_time}</td>
                     <td class="right">
                         {{if $value.callers_desc.length}}
                         <a class="callers-link uses_script" href="#callers">${$value.total_call_count}</a>
@@ -116,10 +115,7 @@
 
                         {{/if}}
                     </td>
-                    <td class="right">${$value.cumulative_time}</td>
                     <td class="right">${$value.per_call_cumulative}</td>
-                    <td class="right">${$value.total_time}</td>
-                    <td class="right">${$value.per_call}</td>
                 </tr>
 
                 {{/each}}
