@@ -2,11 +2,11 @@
 
 gae_mini_profiler is a quick drop-in WSGI app that provides ubiquitous profiling of your existing GAE projects. It exposes both RPC statistics and standard profiling output for users of your choosing on your production site. Only requests coming from users of your choosing will be profiled, and others will not suffer any performance degradation. See screenshots and features below.
 
-This project is heavily inspired by the impressive [mvc-mini-profiler](http://code.google.com/p/mvc-mini-profiler/).
+This project is heavily inspired by the impressive [mvc-mini-profiler](http://miniprofiler.com/).
 
 gae_mini_profiler is [MIT licensed](http://en.wikipedia.org/wiki/MIT_License).
 
-* <a href="#demo">Demo</a>
+* <a href="#demo">See it in action</a>
 * <a href="#screens">Screenshots</a>
 * <a href="#start">Getting Started</a>
 * <a href="#features">Features</a>
@@ -14,9 +14,9 @@ gae_mini_profiler is [MIT licensed](http://en.wikipedia.org/wiki/MIT_License).
 * <a href="#bonus">Bonus</a>
 * <a href="#faq">FAQ</a>
 
-## <a name="demo">Demo</a>
+## <a name="demo">See it in action</a>
 
-You can play around with one of GAE's sample applications with gae_mini_profiler enabled for all users via [http://gae-mini-profiler.appspot.com](http://gae-mini-profiler.appspot.com/).
+Play around with a demo App Engine applications with gae_mini_profiler enabled at [http://mini-profiler.appspot.com](http://mini-profiler.appspot.com/).
 
 ## <a name="screens">Screenshots</a>
 
@@ -39,15 +39,12 @@ You can play around with one of GAE's sample applications with gae_mini_profiler
         - url: /gae_mini_profiler/.*
           script: gae_mini_profiler/main.py
 
-3. Modify the WSGI application you want to profile by wrapping it with the gae_mini_profiler WSGI application. This is usually done in `appengine_config.py`:
+3. Modify the WSGI application you want to profile by wrapping it with the gae_mini_profiler WSGI application.
 
         import gae_mini_profiler.profiler
-        gae_mini_profiler_ENABLED_PROFILER_EMAILS = ['m.dornseif@hudora.de']
-
-        def webapp_add_wsgi_middleware(app):
-            """Called with each WSGI handler initialisation"""
-            app = gae_mini_profiler.profiler.ProfilerWSGIMiddleware(app)
-            return app
+        ...
+        application = webapp.WSGIApplication([...])
+        application = gae_mini_profiler.profiler.ProfilerWSGIMiddleware(application)
 
 4. If you use Django Templates insert the `profiler_includes` template tag below jQuery somewhere (preferably at the end of your template):
 
@@ -74,12 +71,16 @@ You can play around with one of GAE's sample applications with gae_mini_profiler
     If you use the static inclusion you probably should use your template engine to include the code only
 for admins or other profiling-prone users.
 
-5. You're all set! Just choose the users for whom you'd like to enable profiling by putting the respective E-Mail addresses in `gae_mini_profiler/config.py`:
+5. You're all set! Now you just need to choose when you want to enable the profiler by overriding a simple function. By default it's enabled on the dev server and disabled in production. To enable it for App Engine admins in production, add the following to appengine_config.py:
 
-            enabled_profiler_emails = ['user1@example.com',
-                                       'user2@example.com']
-
-For more sophisticated choice of what to profile check `gae_mini_profiler/config.py`.
+        def gae_mini_profiler_should_profile_production():
+                from google.appengine.api import users
+                return users.is_current_user_admin()
+                
+        # ...in appengine_config.py you can override both of the following...
+        #        gae_mini_profiler_should_profile_production()
+        #        gae_mini_profiler_should_profile_development()
+        # ...with any logic you want to choose when the profiler should be enabled.
 
 
 ## <a name="features">Features</a>
