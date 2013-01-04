@@ -52,29 +52,29 @@ Play around with a demo App Engine applications with gae_mini_profiler enabled a
         
     Using any template engine of your choice, call this function at the end of your template:
     
-                    ...
-                    {% profiler_includes %}
-                </body>
-            </html>
+                ...
+                {% profiler_includes %}
+            </body>
+        </html>
 
     Note that these resources will not be loaded on requests when the profiler is disabled, so you don't need to worry about extra HTTP requests slowing down your users.
 
     Using Django?
         You can register a simple_tag to expose this to your templates:
         
-            register = template.create_template_register()
-            @register.simple_tag
-            def profiler_includes():
-                return gae_mini_profiler.templatetags.profiler_includes()
+        register = template.create_template_register()
+        @register.simple_tag
+        def profiler_includes():
+            return gae_mini_profiler.templatetags.profiler_includes()
                     
     Using jinja2?
         You can expose this function to your templates easily:
         
-            webapp2_extras.jinja2.default_config = {
-                "globals": {
-                    profiler_includes: gae_mini_profiler.templatetags.profiler_includes
-                }
+        webapp2_extras.jinja2.default_config = {
+            "globals": {
+                profiler_includes: gae_mini_profiler.templatetags.profiler_includes
             }
+        }
                 
     Using anything else to generate your HTML?
         Just find some way to spit the results of profiler_includes() into your HTML. Doesn't have to be anything fancy.
@@ -85,10 +85,12 @@ Play around with a demo App Engine applications with gae_mini_profiler enabled a
                 from google.appengine.api import users
                 return users.is_current_user_admin()
                 
-        # ...in appengine_config.py you can override both of the following...
-        #        gae_mini_profiler_should_profile_production()
-        #        gae_mini_profiler_should_profile_development()
-        # ...with any logic you want to choose when the profiler should be enabled.
+    In appengine_config.py you can override both of the following...
+    
+        def gae_mini_profiler_should_profile_production(): pass
+        def gae_mini_profiler_should_profile_development(): pass
+        
+    ...with any logic you want to choose when the profiler should be enabled.
 
 
 ## <a name="features">Features</a>
