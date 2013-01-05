@@ -125,8 +125,9 @@
 
             {{if profiler_results.is_dev_server}}
             <span class="warn">
-                <nobr>The sampling profiler only works in production. These are just examples.</nobr><br>
-                <nobr>Use the instrumented profiler for CPU profiling of App Engine's dev server.</nobr>
+                <nobr>The sampling profiler only works in production as it requires threading support.</nobr><br>
+                <nobr>Use the instrumented profiler for CPU profiling of App Engine's dev server.</nobr><br>
+                <nobr>These are just examples.</nobr>
             </span>
             {{/if}}
 
