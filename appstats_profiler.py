@@ -11,7 +11,7 @@ from google.appengine.ext.appstats import recording
 
 import cleanup
 import unformatter
-from gae_mini_profiler import util
+import util
 
 class Profile(object):
     """Profiler that wraps appstats for programmatic access and reporting."""

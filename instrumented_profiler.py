@@ -20,7 +20,7 @@ import cProfile
 import pstats
 import StringIO
 
-from gae_mini_profiler import util
+import util
 
 class Profile(object):
     """Profiler that wraps cProfile for programmatic access and reporting."""

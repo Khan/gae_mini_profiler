@@ -27,10 +27,8 @@ from google.appengine.ext.webapp import RequestHandler
 
 import cookies
 import pickle
-
-import gae_mini_profiler.config
-from gae_mini_profiler import util
-from gae_mini_profiler import config
+import config
+import util
 
 dev_server = os.environ["SERVER_SOFTWARE"].startswith("Devel")
 
