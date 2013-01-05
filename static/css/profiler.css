@@ -4,9 +4,9 @@
     text-align: right;
 
     max-height: 205px;
-    overflow: scroll;
+    overflow: auto;
     overflow-x: hidden;
-    overflow-y: scroll;
+    overflow-y: auto;
 }
 
 .g-m-p-corner .ms,
@@ -17,6 +17,7 @@
 .g-m-p-corner .entry {  	
     height: auto;  	
     margin: auto;
+    white-space: nowrap;
 }
 
 .g-m-p-corner .entry.ajax {
