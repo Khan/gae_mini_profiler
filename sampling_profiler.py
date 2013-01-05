@@ -42,7 +42,7 @@ class InspectingThread(threading.Thread):
         # http://stackoverflow.com/questions/323972/is-there-any-way-to-kill-a-thread-in-python
         self._stop_event.set()
 
-    def is_stopped(self):
+    def should_stop(self):
         return self._stop_event.is_set()
 
     def run(self):
@@ -51,7 +51,7 @@ class InspectingThread(threading.Thread):
         This will run, periodically inspecting and then sleeping, until
         manually stopped via stop()."""
         # Keep sampling until this thread is explicitly stopped.
-        while not self.is_stopped():
+        while not self.should_stop():
 
             # Take a sample of the main request thread's frame stack...
             self.profile.take_sample()
