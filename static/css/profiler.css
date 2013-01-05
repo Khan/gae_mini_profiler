@@ -2,6 +2,11 @@
     padding: 4px;
     cursor: pointer;
     text-align: right;
+
+    max-height: 205px;
+    overflow: scroll;
+    overflow-x: hidden;
+    overflow-y: scroll;
 }
 
 .g-m-p-corner .ms,
