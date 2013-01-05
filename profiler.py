@@ -317,6 +317,9 @@ class RequestProfiler(object):
 
             if Mode.is_rpc_enabled(self.mode):
                 # Turn on AppStats monitoring for this request
+                # Note that we don't import appstats_profiler at the top of
+                # this file so we don't bring in a lot of imports for users who
+                # don't have the profiler enabled.
                 from gae_mini_profiler import appstats_profiler
                 self.appstats_prof = appstats_profiler.Profile()
                 app = self.appstats_prof.wrap(app)
@@ -326,14 +329,23 @@ class RequestProfiler(object):
             # argument.
             result_fxn_wrapper = lambda fxn: fxn()
 
+            # TODO(kamens): both sampling_profiler and instrumented_profiler
+            # could subclass the same class. Then they'd both be guaranteed to
+            # implement run(), and the following if/else could be simplified.
             if Mode.is_sampling_enabled(self.mode):
-                # Turn on sampling profiling for this request
+                # Turn on sampling profiling for this request.
+                # Note that we don't import sampling_profiler at the top of
+                # this file so we don't bring in a lot of imports for users who
+                # don't have the profiler enabled.
                 from gae_mini_profiler import sampling_profiler
                 self.sampling_prof = sampling_profiler.Profile()
                 result_fxn_wrapper = self.sampling_prof.run
 
             elif Mode.is_instrumented_enabled(self.mode):
                 # Turn on cProfile instrumented profiling for this request
+                # Note that we don't import instrumented_profiler at the top of
+                # this file so we don't bring in a lot of imports for users who
+                # don't have the profiler enabled.
                 from gae_mini_profiler import instrumented_profiler
                 self.instrumented_prof = instrumented_profiler.Profile()
                 result_fxn_wrapper = self.instrumented_prof.run
