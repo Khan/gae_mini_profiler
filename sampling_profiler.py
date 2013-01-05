@@ -114,6 +114,7 @@ class Profile(object):
 
     def take_sample(self):
         # Look at stacks of all existing threads...
+        # See http://bzimmer.ziclix.com/2008/12/17/python-thread-dumps/
         for thread_id, stack in sys._current_frames().items():
 
             # ...and choose to sample only the main request thread.
