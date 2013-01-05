@@ -90,8 +90,8 @@ class Profile(object):
 
         for sample in self.samples:
             for filename, line_num, function_name, src in sample.stack_trace:
-                aggregated_calls["%s:%s(%s)" %
-                        (filename, line_num, function_name)] += 1
+                aggregated_calls["%s\n\n%s:%s (%s)" %
+                        (src, filename, line_num, function_name)] += 1
 
         # Turn aggregated call samples into dictionary of results
         calls = [{
