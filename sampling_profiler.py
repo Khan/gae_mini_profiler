@@ -117,19 +117,22 @@ class Profile(object):
         # See http://bzimmer.ziclix.com/2008/12/17/python-thread-dumps/
         for thread_id, stack in sys._current_frames().items():
 
-            # ...and choose to sample only the main request thread.
-            # TODO(kamens): this profiler will need work if we ever actually
-            # use multiple threads in a single request and want to profile more
-            # than one of them.
-            should_sample = thread_id == self.current_request_thread_id
+            # ...but only sample from the main request thread.
 
-            # Dev server's threading.current_thread() implementation won't give
-            # us a thread id that we can use. Instead, just take a peek at the
-            # stack's current package to figure out which is the request
-            # thread.
-            if (_is_dev_server and
-                    stack.f_globals["__package__"] == "gae_mini_profiler"):
-                should_sample = True
+            if _is_dev_server:
+                # In development, current_request_thread_id won't be set
+                # properly. threading.current_thread().ident always returns -1
+                # in dev. So instead, we just take a peek at the stack's
+                # current package to figure out if it is the request thread.
+                should_sample = (stack.f_globals["__package__"] ==
+                        "gae_mini_profiler")
+            else:
+                # In production, current_request_thread_id will be set properly
+                # by threading.current_thread().ident.
+                # TODO(kamens): this profiler will need work if we ever
+                # actually use multiple threads in a single request and want to
+                # profile more than one of them.
+                should_sample = thread_id == self.current_request_thread_id
 
             if should_sample:
                 # Grab a sample of this thread's current stack
