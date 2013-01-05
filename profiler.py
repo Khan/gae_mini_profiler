@@ -65,7 +65,13 @@ class Mode(object):
     
     TODO(kamens): switch this from an enum to a more sensible bitmask or other
     alternative that supports multiple settings without an exploding number of
-    enums."""
+    enums.
+    
+    TODO(kamens): when this is changed from an enum to a bitmask or other more
+    sensible object with multiple properties, we should pass a Mode object
+    around the rest of this code instead of using a simple string that this
+    static class is forced to examine (e.g. if self.mode.is_rpc_enabled()).
+    """
 
     SIMPLE = "simple"  # Simple start/end timing for the request as a whole
     CPU_INSTRUMENTED = "instrumented"  # Profile all function calls
