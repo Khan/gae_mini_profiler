@@ -124,6 +124,16 @@ class Profile(object):
                 # properly. threading.current_thread().ident always returns -1
                 # in dev. So instead, we just take a peek at the stack's
                 # current package to figure out if it is the request thread.
+                # Even though the dev server is single-threaded,
+                # sys._current_frames will return multiple threads, because
+                # some of them are spawned by the App Engine dev server for
+                # internal purposes. We don't want to sample these internal dev
+                # server threads -- we want to sample the thread that is
+                # running the current request. Since the dev server will be
+                # running this sampling code immediately from the run() code
+                # below, we can spot this thread's stack by looking at its
+                # global namespace (f_globals) and making sure it's currently
+                # in the gae_mini_profiler package.
                 should_sample = (stack.f_globals["__package__"] ==
                         "gae_mini_profiler")
             else:
