@@ -26,17 +26,9 @@ class Profile(object):
     def results(self):
         """Return appstats results in a dictionary for template context."""
         if not self.recorder:
-            # Appstats may not always be initialized when we want it to be due
-            # to its own internal memcache locking. It won't run more than one
-            # appstats profiling request at a time, across all GAE instances.
-            # This means we may've failed to record appstats results for this
-            # request because a different instance handling a different request
-            # already has the global appstats lock.
-            #
-            # In this case, we simply return an empty set of appstats results
-            # so the profiler's client still functions.
-            #
-            # TODO(kamens): fix or make this error case more clear to user.
+            # If appstats fails to initialize for any reason, return an empty
+            # set of results.
+            logging.warn("Missing recorder for appstats profiler.")
             return {
                 "calls": [],
                 "total_time": 0,
