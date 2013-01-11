@@ -4,16 +4,18 @@ This profiler provides a very simplistic view of where your request is spending
 its time. It does this by periodically sampling your request's call stack to
 figure out in which functions real time is being spent.
 
-PRO: since this profiler only samples the call stack occasionally, the overhead
-is negligible...even during deeply nested function calls that would cause
-problems for an instrumented profiler. It also offers an opinionated, simple
-view of your program's performance by simply answering the question, "where
-is time being spent?"
+PRO: since the profiler only samples the call stack occasionally, it has much
+less overhead than an instrumenting profiler, and avoids biases that
+instrumenting profilers have due to instrumentation overhead (which causes
+instrumenting profilers to overstate how much time is spent in frequently
+called functions, or functions with deep call stacks).
 
-CON: since this profiler only samples the call stack occasionally, detailed
-timings of functions go out the window. You won't get accuracy from this
-profiler, and running it repeatedly for the same request may produce varied
-results as different call stacks will get sampled.
+CON: since the profiler only samples, it does not allow you to accurately
+answer a question like, "how much time was spent in routine X?", especially if
+routine X takes relatively little time.  (You *can* answer questions like "what
+is the ratio of time spent in routine X vs routine Y," at least if both
+routines take a reasonable amount of time.)  It is better suited for answering
+the question, "Where is the time spent by my app?"
 """
 
 from collections import defaultdict
