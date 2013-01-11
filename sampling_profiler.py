@@ -154,6 +154,7 @@ class Profile(object):
         """Run function with samping profiler enabled, saving results."""
         if not hasattr(threading, "current_thread"):
             # Sampling profiler is not supported in Python2.5
+            logging.warn("The sampling profiler is not supported in Python2.5")
             return fxn()
 
         # Store the thread id for the current request's thread. This lets
