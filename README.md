@@ -1,6 +1,6 @@
 # Google App Engine Mini Profiler
 
-gae_mini_profiler is a quick drop-in WSGI app that provides ubiquitous profiling of your existing GAE projects. It exposes both RPC statistics and standard profiling output for users of your choosing on your production site. Only requests coming from users of your choosing will be profiled, and others will not suffer any performance degradation. See screenshots and features below.
+gae_mini_profiler is a quick drop-in WSGI app that provides ubiquitous profiling of your existing GAE projects. It exposes RPC statistics and CPU profiling output for users of your choosing on your production site. Only requests coming from users of your choosing will be profiled, and others will not suffer any performance degradation, so you can use this profiler to learn about production performance without stressing about slowing users down. See screenshots and features below.
 
 This project is heavily inspired by the StackExchange team's impressive [mini-profiler](http://miniprofiler.com/).
 
@@ -18,12 +18,21 @@ Play around with a demo App Engine applications with gae_mini_profiler enabled a
 
 ## <a name="screens">Screenshots</a>
 
-<img src="http://gae-mini-profiler.appspot.com/images/gae-mini-profiler/corner.png"/><br/><em>All profiled pages have total milliseconds in corner, which can be expanded...</em><br/><br/>
-<img src="http://gae-mini-profiler.appspot.com/images/gae-mini-profiler/expanded.png"/><br/><em>...to show more details...</em><br/><br/>
-<img src="http://gae-mini-profiler.appspot.com/images/gae-mini-profiler/rpc.png"/><br/><em>...about remote procedure call performance...</em><br/><br/>
-<img src="http://gae-mini-profiler.appspot.com/images/gae-mini-profiler/profile.png"/><br/><em>...or standard profiler output.</em><br/><br/>
-<img src="http://gae-mini-profiler.appspot.com/images/gae-mini-profiler/ajax-corner.png?test"/><br/><em>Ajax requests are also profiled and details made available as they are received.</em><br/><br/>
-<img src="http://i.imgur.com/SG0dp.png"/><br/><em>Any Python logging module output is also available for easy access.</em>
+<strong>All profiled pages have total milliseconds in corner, which can be expanded...</strong><br/>
+<img src="http://i.imgur.com/Nqdtu.png"/><br/><br>
+<strong>...to show more details...</strong><br/>
+<img src="http://i.imgur.com/sjxE7.png"/><br/><br/>
+<strong>...about remote procedure call performance...</strong><br/>
+<img src="http://i.imgur.com/C29gC.png"/><br/><br>
+<strong>...or CPU profiler output.</strong><br/>
+<img src="http://i.imgur.com/XcBxG.png"/><br/><br/>
+<strong>Choose between an instrumented CPU profiler (above) or a sampling
+profiler (below).</strong><br/>
+<img src="http://i.imgur.com/KiwHv.png"><br><br>
+<strong>Ajax requests and redirects are also profiled and added to the corner of your page.</strong><br/>
+<img src="http://i.imgur.com/8gS4D.png"/><br/><br>
+<strong>Any Python logging module output is also available for easy access.</strong>
+<img src="http://i.imgur.com/6382r.png"/><br/>
 
 ## <a name="start">Getting Started</a>
 
@@ -98,8 +107,8 @@ Play around with a demo App Engine applications with gae_mini_profiler enabled a
 * Summaries of RPC call types and their performance so you can quickly figure out whether datastore, memcache, or urlfetch is your bottleneck
 * Redirect chains are tracked -- quickly examine the profile of not just the currently rendered request, but any preceding request that issued a 302 redirect leading to the current page.
 * Share individual profile results with others by sending link
-* Duplicate RPC calls are flagged for easy spotting in case you're repeating memcache or datastore queries.
-* Quickly sort and examine profiler stats and call stacks
+* Duplicate RPC calls are flagged for easy spotting in case you're repeating memcache or datastore queries
+* Choose from either an instrumented or sampling CPU profiler to quickly figure out where your requests are spending time
 
 ## <a name="dependencies">Dependencies</a>
 
@@ -108,7 +117,7 @@ Play around with a demo App Engine applications with gae_mini_profiler enabled a
 
 ## <a name="bonus">Bonus</a>
 
-gae_mini_profiler is currently in production use at [Khan Academy](http://khanacademy.org) as well as [WebPutty](http://www.webputty.net). If you make good use of it elsewhere, be sure to let me know.
+gae_mini_profiler is currently in production use at [Khan Academy](http://khanacademy.org). If you make good use of it elsewhere, be sure to let me know.
 
 ## <a name="faq">FAQ</a>
 
