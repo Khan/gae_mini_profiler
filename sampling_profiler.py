@@ -32,7 +32,7 @@ _is_dev_server = os.environ["SERVER_SOFTWARE"].startswith("Devel")
 
 class InspectingThread(threading.Thread):
     """Thread that periodically triggers profiler inspections."""
-    SAMPLES_PER_SECOND = 35
+    SAMPLES_PER_SECOND = 250
 
     def __init__(self, profile=None):
         super(InspectingThread, self).__init__()
