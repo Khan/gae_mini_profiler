@@ -2,7 +2,7 @@
 
 gae_mini_profiler is a quick drop-in WSGI app that provides ubiquitous profiling of your existing GAE projects. It exposes RPC statistics and CPU profiling output for users of your choosing on your production site. Only requests coming from users of your choosing will be profiled, and others will not suffer any performance degradation, so you can use this profiler to learn about production performance without stressing about slowing users down. See screenshots and features below.
 
-This project is heavily inspired by the StackExchange team's impressive [mini-profiler](http://miniprofiler.com/).
+This project is heavily inspired by the Stack Exchange team's impressive [mini-profiler](http://miniprofiler.com/).
 
 * <a href="#demo">See it in action</a>
 * <a href="#screens">Screenshots</a>
