@@ -9,6 +9,20 @@
     </div>
 </script>
 
+<script id="profilerRequestLogTemplate" type="text/x-jquery-tmpl">
+    <span class="request-log">
+        <span title="This request spent ${pending_ms} ms in the pending queue, waiting to be served.">
+            ${pending_ms} <span class="ms">ms</span> <strong>pending</strong>
+        </span> &mdash;
+        {{if loading_request}}
+            <span title="This was a loading request, which means it was served by a new instance.">
+                <strong>Loading request</strong>
+            </span> &mdash;
+        {{/if}}
+        <a href="/gae_mini_profiler/shared?request_id=${encodeURIComponent(request_id)}">Share request profile</a>
+    </span>
+</script>
+
 <script id="profilerTemplate" type="text/x-jquery-tmpl">
     <div class="g-m-p" style="display:none;">
         <div class="title">
@@ -54,8 +68,9 @@
             {{if temporary_redirect}}
                 <span class="redirect" title="Temporary redirect">&#8623; (302 redirect)</span>
             {{/if}}
-            <a href="/gae_mini_profiler/shared?request_id=${encodeURIComponent(request_id)}"><span class="date">${s_dt}</span></a>
-            - <a class="settings-link uses_script" href="#">Settings</a>
+            <a href="/gae_mini_profiler/shared?request_id=${encodeURIComponent(request_id)}" class="uses_script request-log-link">More request info</a>
+            <span class="request-log request-log-${logging_request_id}" style="display:none;"><em>loading more request info...</em></span>
+            &mdash; <a class="settings-link uses_script" href="#">Settings</a>
         </div>
 
         {{if !GaeMiniProfiler.isCpuEnabled(mode)}}

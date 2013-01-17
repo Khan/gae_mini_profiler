@@ -155,6 +155,60 @@ var GaeMiniProfiler = {
         }
     },
 
+    /**
+     * Fetch the RequestLog data (pending_ms and loading_request) from App
+     * Engine's logservice API.
+     */
+    fetchRequestLog: function(data, attempts) {
+
+        // We're willing to ask the logservice API for its RequestLog data more
+        // than once, because it may take App Engine a while to flush its logs.
+        if (!attempts) {
+            attempts = 0;
+        }
+        
+        // We only try to get the request log three times.
+        if (attempts > 2) {
+            $(".g-m-p .request-log-" + data.logging_request_id)
+                .html("Request log data not found.");
+            return;
+        }
+
+        $.get(
+            "/gae_mini_profiler/request/log",
+            {
+                "request_id": data.request_id,
+                "logging_request_id": data.logging_request_id
+            },
+            function(requestLogData) {
+
+                if (!requestLogData) {
+                    // The request log may not be available just yet, because
+                    // App Engine may still be writing its logs. We'll wait a 
+                    // sec and try up to three times.
+                    setTimeout(function() {
+                        GaeMiniProfiler.fetchRequestLog(data, attempts + 1);
+                    }, 1000);
+                    return;
+                }
+
+                requestLogData.request_id = data.request_id;
+                GaeMiniProfiler.finishFetchRequestLog(requestLogData);
+            }
+        );
+    },
+
+    /**
+     * Render the RequestLog information (pending_ms and loading_request).
+     */
+    finishFetchRequestLog: function(requestLogData) {
+        $(".g-m-p .request-log-" + requestLogData.logging_request_id)
+            .empty()
+            .append(
+                $("#profilerRequestLogTemplate").tmplPlugin(
+                    requestLogData));
+    },
+
     collapse: function(e) {
         if ($(".g-m-p").is(":visible")) {
             $(".g-m-p").slideUp("fast");
@@ -190,6 +244,8 @@ var GaeMiniProfiler = {
                 .click(function() { GaeMiniProfiler.toggleSection(this, ".logs-details"); return false; }).end()
             .find(".callers-link")
                 .click(function() { $(this).parents("td").find(".callers").slideToggle("fast"); return false; }).end()
+            .find(".request-log-link")
+                .click(function() { GaeMiniProfiler.showRequestLog(this); return false; }).end()
             .find(".settings-link")
                 .click(function() { GaeMiniProfiler.toggleSettings(this); return false; }).end()
             .find(".settings input")
@@ -228,6 +284,33 @@ var GaeMiniProfiler = {
         }
 
         toggleLogRows(initLevel);
+
+        // Once a mini profiler entry is expanded, ask App Engine for its
+        // additional request log information.
+        // We wait to do this until a profiler entry is expanded because:
+        //  A) RequestLogs aren't available *immediately* after a request
+        //  finishes, so waiting until the profiler user shows interest in a
+        //  request makes sense.
+        //  B) Most profiler users won't need this data, so we don't want to
+        //  use the logservice API unnecessarily.
+        this.fetchRequestLog(data);
+    },
+
+    /**
+     * Replace the "Show more request info" link with App Engine's RequestLog
+     * data (pending_ms and loading_request), which will have been retrieved as
+     * soon as the mini profiler tab was expanded.
+     */
+    showRequestLog: function(elLink) {
+
+        $(elLink).closest(".g-m-p")
+            .find(".request-log-link")
+                .css("display", "none")
+                .end()
+            .find(".request-log")
+                .show("fast")
+                .end();
+
     },
 
     toggleSettings: function(elLink) {

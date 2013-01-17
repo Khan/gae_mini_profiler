@@ -21,6 +21,7 @@ import StringIO
 from types import GeneratorType
 import zlib
 
+from google.appengine.api import logservice
 from google.appengine.api import memcache
 from google.appengine.ext.appstats import recording
 from google.appengine.ext.webapp import RequestHandler
@@ -147,6 +148,55 @@ class SharedStatsHandler(RequestHandler):
         template = template.replace('{{profiler_includes}}', profiler_includes)
         self.response.out.write(template)
 
+
+class RequestLogHandler(RequestHandler):
+    """Handler for retrieving and returning a RequestLog from GAE's logs API.
+
+    See https://developers.google.com/appengine/docs/python/logs.
+    
+    This GET request accepts a logging_request_id via query param that matches
+    the request_id from an App Engine RequestLog.
+
+    It returns a JSON object that contains the pieces of RequestLog info we
+    find most interesting, such as pending_ms and loading_request.
+    """
+
+    def get(self):
+
+        self.response.headers["Content-Type"] = "application/json"
+        dict_request_log = None
+
+        # This logging_request_id should match a request_id from an App Engine
+        # request log.
+        # https://developers.google.com/appengine/docs/python/logs/functions
+        logging_request_id = self.request.get("logging_request_id")
+
+        # Grab the single request log from logservice
+        logs = logservice.fetch(request_ids=[logging_request_id])
+
+        # This slightly strange query result implements __iter__ but not next,
+        # so we have to iterate to get our expected single result.
+        for log in logs:
+            dict_request_log = {
+                "pending_ms": log.pending_time,  # time spent in pending queue
+                "loading_request": log.was_loading_request,  # loading request?
+                "logging_request_id": logging_request_id
+            }
+            # We only expect a single result.
+            break
+
+        # Log fetching doesn't work on the dev server and this data isn't
+        # relevant in dev server's case, so we return a simple fake response.
+        if dev_server:
+            dict_request_log = {
+                "pending_ms": 0,
+                "loading_request": False,
+                "logging_request_id": logging_request_id
+            }
+
+        self.response.out.write(json.dumps(dict_request_log))
+
+
 class RequestStatsHandler(RequestHandler):
 
     def get(self):
@@ -185,10 +235,16 @@ class RequestStats(object):
 
     serialized_properties = ["request_id", "url", "url_short", "s_dt",
                              "profiler_results", "appstats_results", "mode",
-                             "temporary_redirect", "logs"]
+                             "temporary_redirect", "logs",
+                             "logging_request_id"]
 
-    def __init__(self, request_id, environ, profiler):
-        self.request_id = request_id
+    def __init__(self, profiler, environ):
+        # unique mini profiler request id
+        self.request_id = profiler.request_id
+
+        # App Engine's logservice request_id
+        # https://developers.google.com/appengine/docs/python/logs/
+        self.logging_request_id = profiler.logging_request_id
 
         self.url = environ.get("PATH_INFO")
         if environ.get("QUERY_STRING"):
@@ -246,6 +302,7 @@ class RequestProfiler(object):
         self.temporary_redirect = False
         self.handler = None
         self.logs = None
+        self.logging_request_id = self.get_logging_request_id()
         self.start = None
         self.end = None
 
@@ -374,7 +431,16 @@ class RequestProfiler(object):
         self.end = time.time()
 
         # Store stats for later access
-        RequestStats(self.request_id, environ, self).store()
+        RequestStats(self, environ).store()
+
+    def get_logging_request_id(self):
+        """Return the identifier for this request used by GAE's logservice.
+        
+        This logging_request_id will match the request_id parameter of a
+        RequestLog object stored in App Engine's logging API:
+        https://developers.google.com/appengine/docs/python/logs/
+        """
+        return os.environ.get("REQUEST_LOG_ID", None)
 
     def add_handler(self):
         if self.handler is None:
