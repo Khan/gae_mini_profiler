@@ -79,7 +79,7 @@ profiler (below).</strong><br/>
         
         webapp2_extras.jinja2.default_config = {
             "globals": {
-                profiler_includes: gae_mini_profiler.templatetags.profiler_includes
+                "profiler_includes": gae_mini_profiler.templatetags.profiler_includes
             }
         }
                 
