@@ -1,178 +1,109 @@
+import pprint
+import re
 import sys
 
-class UnformatStream(object):
-    "Outputs tokens to a text stream"
-    def __init__(self, out=sys.stdout, indent=u'  '):
-        self.out = out
-        self.indent = indent
 
-    def emit_token(self, token, level=0):
-        try:
-            t = unicode(token)
-        except UnicodeDecodeError:
-            t = repr(token)
+_STRING = re.compile(r"^\s*(['\"])")
+_NUMBER = re.compile(r"^\s*(\d+L?)\s*")
+_BOOLEAN = re.compile(r"^\s*(True|False)\s*")
+_DETAILS_OMMITTED = re.compile(r"^\s*\.\.\.\s*")
+_LIST = re.compile(r"^\s*\[")
+_LIST_SEPARATOR = re.compile(r"^\s*,\s*")
+_LIST_END = re.compile(r"^\s*]\s*")
+_DICT = re.compile(r"^\s*([\w-]+)<")
+_DICT_FIELD = re.compile(r"^\s*([\w-]+)\s*=\s*")
+_DICT_SEPARATOR = _LIST_SEPARATOR
+_DICT_END = re.compile(r"^\s*>\s*")
 
-        self.out.write((self.indent * level) + t)
-        self.out.write(u'\n')
 
-class UnformatObject(object):
-    "Saves the tokens as a json-like object"
-    def __init__(self):
-        self.value = None
-        self.stack = []
-        self.lastlevel = 0
+def _consume_re(re, text):
+    m = re.match(text)
+    if not m:
+        return None, text
+    return m, text[m.end(0):]
 
-    def get_last_parent(self):
-        current = self.value
-        for k in self.stack[:-1]:
-            current = current[k]
-            if type(current) == list:
-                current = current[-1]
-        return current
 
-    def emit_token(self, token, level=0):
-        if level == 0 and self.value is None:
-            self.value = {token: None}
-            self.stack.append(token)
-            return
+def _parse_string(text, quote_char):
+    end = text.index(quote_char)
+    while text[end-1] == "\\":
+        end = text.index(quote_char, end+1)
+    return text[:end].decode('string_escape'), text[end+1:]
 
-        if token != ']': # lists don't have keys on the stack
-            for i in xrange(level, self.lastlevel):
-                self.stack.pop()
-        self.lastlevel = level
 
-        if token in ['>', ']']:
-            return
+def _parse_list(text):
+    result = []
+    while True:
+        m, text = _consume_re(_LIST_END, text)
+	if m:
+	    return result, text
+	element, text = _parse(text)
+	result.append(element)
+	_, text = _consume_re(_LIST_SEPARATOR, text)
 
-        key = self.stack[-1]
-        parent = self.get_last_parent()
-        val = parent[key]
 
-        if token == '<':
-            if val == None: # special case at beginning where {'Class':None}
-                parent[key] = {}
-            elif type(val) == list:
-                actualval = val[-1] # use the last list element as the class
-                val[-1] = {actualval: {}}
-                self.stack.append(actualval)
-            else: # it's a class name
-                parent[key] = {val: {}}
-                self.stack.append(val)
-        else:
-            if token == '[':
-                token = []
+def _parse_dict(text, name):
+    args = []
+    kwargs = {}
+    while True:
+        m, text = _consume_re(_DICT_END, text)
+	if m:
+	    if args and kwargs:
+	        obj = { 'args': args }
+		obj.update(kwargs)
+	    elif args:
+	        obj = args if len(args) > 1 else args[0]
+	    elif kwargs:
+	        obj = kwargs
+	    else:
+	        obj = None
+	    return {name: obj}, text
+	m, text = _consume_re(_DICT_SEPARATOR, text)
+	if m:
+	    continue
+	m, text = _consume_re(_DICT_FIELD, text)
+	if m:
+	    element, text = _parse(text)
+	    kwargs[ m.group(1).strip("_") ] = element
+	    continue
+	element, text = _parse(text)
+	args.append(element)
 
-            if val == None:
-                val = token
-            elif type(val) == list:
-                val.append(token)
-            elif type(val) == dict:
-                val[token] = None
-                self.stack.append(token)
-            else:
-                raise Exception('invalid token %s', token)
-            parent[key] = val
+
+def _parse(text):
+    m, text = _consume_re(_STRING, text)
+    if m:
+        return _parse_string(text, m.group(1))
+    m, text = _consume_re(_NUMBER, text)
+    if m:
+        value = long(m.group(1)[:-1]) if m.group(1).endswith("L") else int(m.group(1))
+	return value, text
+    m, text = _consume_re(_BOOLEAN, text)
+    if m:
+        return m.group(1) == "True", text
+    m, text = _consume_re(_DETAILS_OMMITTED, text)
+    if m:
+        return "...", text
+    m, text = _consume_re(_LIST, text)
+    if m:
+        return _parse_list(text)
+    m, text = _consume_re(_DICT, text)
+    if m:
+        return _parse_dict(text, m.group(1))
+    raise ValueError(text)
+
 
 def unformat(text):
-    result = UnformatObject()
-    unformat_value(text, out=result)
-    return result.value
+    result, remainder = _parse(text)
+    assert remainder == ""
+    return result
 
-def unformat_value(text, i=0, level=0, delim=None, out=UnformatStream()):
-    start = i
-    if text == '':
-        return i
-    if text[i].isdigit():
-        # number
-        while text[i] not in [',', delim]:
-            i += 1
-        number = eval(text[start:i])
-        out.emit_token(repr(number), level)
-    elif text[i] in ["'", '"']:
-        i = unformat_quoted(text, i, level, out=out)
-    elif text[i] == '[':
-        i = unformat_list(text, i, level, '[]', unformat_value, out=out)
-    elif text[i] == '(':
-        i = unformat_list(text, i, level, '()', unformat_value, out=out)
-    else:
-        i = unformat_class(text, i, level, delim, out=out)
-    return i
-
-def unformat_quoted(text, i, level, out=UnformatStream()):
-    start = i
-    delim = text[start]
-    i += 1
-    while text[i] != delim:
-        if text[i] == '\\': # escaped
-            i += 1
-        i += 1
-    i += 1 # go past end of quoted section
-
-    try:
-        quoted = eval(text[start:i])
-    except ValueError:
-        # this occurs when \x00lotsmorechars -> \x0...
-        quoted = text[start:i]
-    out.emit_token(quoted, level)
-    return i
-
-def unformat_class(text, i=0, level=0, delim=None, out=UnformatStream()):
-    # name
-    start = i
-    while text[i] not in ['<', ',', delim]:
-        i += 1
-    class_name = text[start:i]
-    out.emit_token(class_name, level)
-
-    if text[i] == '<':
-        i = unformat_list(text, i, level, '<>', unformat_attrval, out=out)
-    return i
-
-def unformat_attrval(text, i, level, delim, out=UnformatStream()):
-    if text[i] == '.':
-        out.emit_token('...', level)
-        return i + 3
-
-    # attr
-    start = i
-    while text[i] != '=':
-        i += 1
-    attr = text[start:i]
-    out.emit_token(attr, level)
-
-    i += 1 # unformat =
-
-    # val
-    i = unformat_value(text, i, level + 1, delim, out=out)
-    return i
-
-def unformat_list(text, i, level, delim, elfn, out=UnformatStream()):
-    if len(delim) != 2:
-        raise Exception
-    out.emit_token(delim[0], level)
-    i += 1 # unformat open bracket
-    while text[i] != delim[1]:
-        i = elfn(text, i, level + 1, delim[1], out=out)
-        if text[i] == ',':
-            i += 2
-    i += 1 # unformat close bracket
-    out.emit_token(delim[1], level)
-    return i
 
 def main():
     from io import StringIO
-    from pprint import pprint
-
     f = open('examples.txt', 'r')
     for line in f:
-        s = StringIO()
-        unformat_value(line.strip(), out=UnformatStream(s))
-        print(s.getvalue())
-        s.close()
-
-        result = UnformatObject()
-        unformat_value(line.strip(), out=result)
-        pprint(result.value)
+        result = unformat(line.strip())
+        pprint.pprint(result)
 
         raw_input('cont?')
     f.close()
