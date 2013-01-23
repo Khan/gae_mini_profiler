@@ -117,7 +117,7 @@ profiler (below).</strong><br/>
 
 ## <a name="bonus">Bonus</a>
 
-gae_mini_profiler is currently in production use at [Khan Academy](http://khanacademy.org). If you make good use of it elsewhere, plz lemme know.
+gae_mini_profiler is currently in production use at [Khan Academy](http://khanacademy.org). If you make good use of it elsewhere, please lemme know.
 
 ## <a name="faq">FAQ</a>
 
