@@ -27,7 +27,7 @@ def _parse_string(text, quote_char):
     end = text.index(quote_char)
     while text[end-1] == "\\":
         end = text.index(quote_char, end+1)
-    return text[:end].decode('string_escape'), text[end+1:]
+    return text[:end].decode('string_escape', 'ignore'), text[end+1:]
 
 
 def _parse_list(text):
