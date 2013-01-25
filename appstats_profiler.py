@@ -96,7 +96,8 @@ class Profile(object):
                 request_pretty = pformat(request_object)
                 response_pretty = pformat(response_object)
             except Exception, e:
-                logging.warning("Prettifying RPC calls failed.\n%s", e)
+                logging.warning("Prettifying RPC calls failed.\n%s\nRequest: %s\nResponse: %s",
+                    e, request, response, exc_info=True)
 
             service_totals_dict[service_prefix]["total_misses"] += miss
 
