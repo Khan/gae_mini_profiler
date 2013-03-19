@@ -55,6 +55,7 @@ class Profile(object):
                 "primitive_call_count": primitive_call_count,
                 "total_call_count": total_call_count,
                 "cumulative_time": util.seconds_fmt(cumulative_time, 2),
+                "total_time": util.seconds_fmt(total_time, 2),
                 "per_call_cumulative": util.seconds_fmt(cumulative_time / primitive_call_count, 2) if primitive_call_count else "",
                 "func_desc": func_desc,
                 "func_desc_short": util.short_method_fmt(func_desc),
