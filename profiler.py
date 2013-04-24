@@ -290,6 +290,17 @@ class RequestStats(object):
         return "__gae_mini_profiler_request_%s" % request_id
 
 
+class ThreadFilter(logging.Filter):
+    "A logging filter that only allows records from the creating thread."""
+
+    def __init__(self, *args, **kwargs):
+        super(ThreadFilter, self).__init__(*args, **kwargs)
+        self.currentThreadIdent = threading.current_thread().ident
+
+    def filter(self, _):
+        return self.currentThreadIdent == threading.current_thread().ident
+
+
 class RequestProfiler(object):
     """Profile a single request."""
 
@@ -454,6 +465,7 @@ class RequestProfiler(object):
             '%(message)s',
         ]), '%M:%S.')
         handler.setFormatter(formatter)
+        handler.addFilter(ThreadFilter())
         return handler
 
     @staticmethod
