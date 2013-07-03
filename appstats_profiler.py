@@ -96,8 +96,10 @@ class Profile(object):
                 request_pretty = pformat(request_object)
                 response_pretty = pformat(response_object)
             except Exception, e:
-                logging.warning("Prettifying RPC calls failed.\n%s\nRequest: %s\nResponse: %s",
-                    e, request, response, exc_info=True)
+                pass
+                # enable this if you want to improve prettification
+                # logging.warning("Prettifying RPC calls failed.\n%s\nRequest: %s\nResponse: %s",
+                #     e, request, response, exc_info=True)
 
             service_totals_dict[service_prefix]["total_misses"] += miss
 
@@ -134,7 +136,7 @@ class Profile(object):
 
     def wrap(self, app):
         """Wrap and return a WSGI application with appstats recording enabled.
-        
+
         Args:
             app: existing WSGI application to be wrapped
         Returns:
