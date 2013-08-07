@@ -142,7 +142,7 @@ var GaeMiniProfiler = {
             var jCorner = this.renderCorner(data[ix]);
 
             if (!jCorner.data("attached")) {
-                $('body')
+                $(document.body)
                     .append(jCorner)
                     .click(function(e) { return GaeMiniProfiler.collapse(e); });
                 jCorner
@@ -166,7 +166,7 @@ var GaeMiniProfiler = {
         if (!attempts) {
             attempts = 0;
         }
-        
+
         // We only try to get the request log three times.
         if (attempts > 2) {
             $(".g-m-p .request-log-" + data.logging_request_id)
@@ -184,7 +184,7 @@ var GaeMiniProfiler = {
 
                 if (!requestLogData) {
                     // The request log may not be available just yet, because
-                    // App Engine may still be writing its logs. We'll wait a 
+                    // App Engine may still be writing its logs. We'll wait a
                     // sec and try up to three times.
                     setTimeout(function() {
                         GaeMiniProfiler.fetchRequestLog(data, attempts + 1);
@@ -229,7 +229,7 @@ var GaeMiniProfiler = {
             $(document).keyup(function(e) { if (e.which == 27) GaeMiniProfiler.collapse() });
 
         jPopup = this.renderPopup(data);
-        $('body').append(jPopup);
+        $(document.body).append(jPopup);
 
         var jCorner = $(".g-m-p-corner");
         jCorner.find(".expanded").removeClass("expanded");
@@ -328,7 +328,7 @@ var GaeMiniProfiler = {
         if (this.isRpcEnabled(mode)) {
             rpcSelector = "#rpc_enabled";
         }
-        
+
         $(elLink).closest(".g-m-p").find(".settings")
             .find(cpuSelector)
                 .attr("checked", "checked")
@@ -404,7 +404,7 @@ var GaeMiniProfilerTemplate = {
     init: function(callback) {
         $.get("/gae_mini_profiler/static/js/template.tmpl", function (data) {
             if (data) {
-                $('body').append(data);
+                $(document.body).append(data);
                 callback();
             }
         });
