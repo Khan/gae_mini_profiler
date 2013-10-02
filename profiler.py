@@ -5,6 +5,7 @@ import time
 import logging
 import os
 import re
+import urlparse
 
 try:
     import threading
@@ -548,6 +549,24 @@ class ProfilerWSGIMiddleware(object):
 
     @staticmethod
     def headers_with_modified_redirect(environ, headers):
+        """Return headers with redirects modified to include miniprofiler id.
+
+        If this response is a redirect, we want the URL that's redirected *to*
+        to be able to display the profiler results from *this* request that's
+        being redirected *from*. We do this by adding a query string param,
+        'mp-r-id', to the location that is being redirected to. (mp-r-id stands
+        for mini profiler redirect id.) The value of this parameter is a unique
+        identifier for the profiler results for the current request that is
+        being redirected from.
+
+        The mini profiler then knows how to use this id to display profiler
+        results for two requests: the original request that redirected and the
+        request that was served as a result of the redirect.
+
+        e.g. if this set of headers is attempting to redirect to
+            Location:http://khanacademy.org?login, the modified header will be:
+            Location:http://khanacademy.org?login&mp-r-id={current request id}
+        """
         headers_modified = []
 
         for header in headers:
@@ -561,14 +580,17 @@ class ProfilerWSGIMiddleware(object):
                     request_id_chain = ",".join([match.groups()[0], request_id_chain])
 
                 # Remove any pre-existing miniprofiler redirect id
-                location = header[1]
-                location = reg.sub("", location)
+                url_parts = list(urlparse.urlparse(header[1]))
+                query_string = reg.sub("", url_parts[4])
 
                 # Add current request id as miniprofiler redirect id
-                location += ("&" if "?" in location else "?")
-                location = location.replace("&&", "&")
-                location += "mp-r-id=%s" % request_id_chain
+                if query_string and not query_string.endswith("&"):
+                    query_string += "&"
+                query_string += "mp-r-id=%s" % request_id_chain
+                url_parts[4] = query_string
 
+                # Swap in the modified Location: header.
+                location = urlparse.urlunparse(url_parts)
                 headers_modified.append((header[0], location))
             else:
                 headers_modified.append(header)
