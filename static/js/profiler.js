@@ -15,6 +15,11 @@ var GaeMiniProfiler = {
     },
 
     init: function(requestId, fShowImmediately) {
+        var hide = +$.cookiePlugin("g-m-p-hide");
+        if (hide && !fShowImmediately) {
+            return;
+        }
+
         // Fetch profile results for any ajax calls
         // (see http://code.google.com/p/mvc-mini-profiler/source/browse/MvcMiniProfiler/UI/Includes.js)
         $(document).ajaxComplete(function (e, xhr, settings) {
