@@ -44,6 +44,7 @@
                     <td>
                         <input type="radio" id="cpu_instrumented" name="cpu" value="instrumented"/><label for="cpu_instrumented"> instrumented</label><br>
                         <input type="radio" id="cpu_sampling" name="cpu" value="sampling"/><label for="cpu_sampling"> sampling</label><br>
+                        <input type="radio" id="cpu_linebyline" name="cpu" value="linebyline"/><label for="cpu_linebyline"> line-by-line</label><br>
                         <input type="radio" id="cpu_disabled" name="cpu" value=""/><label for="cpu_disabled"> disabled</label>
                     </td>
                     <td>
@@ -52,7 +53,7 @@
                     </td>
                 </tr>
                 <tr class="tips">
-                    <td>CPU profiling either keeps track of all function calls and their timings (instrumented) or periodically examines the call stack to figure out in which functions time is being spent during a request (sampling).</td>
+                    <td>CPU profiling either keeps track of all function calls and their timings (instrumented), periodically examines the call stack to figure out in which functions time is being spent during a request (sampling), or tracks only specific functions (line-by-line).</td>
                     <td>RPC profiling monitors all remote procedure calls (think datastore queries, memcache accesses, and URL fetches) and their timings.</td>
                 </tr>
             </table>
@@ -86,8 +87,10 @@
             <div class="summary">
                 {{if GaeMiniProfiler.isInstrumentedEnabled(mode)}}
                 ${profiler_results.total_time} <span class="ms">ms</span> spent in ${profiler_results.total_call_count} function calls
-                {{else}}
+                {{else GaeMiniProfiler.isSamplingEnabled(mode)}}
                 ${profiler_results.total_samples} sampled stack trace{{if profiler_results.total_samples != 1}}s{{/if}}
+                {{else GaeMiniProfiler.isLineByLineEnabled(mode)}}
+                ${profiler_results.num_functions_marked} profiled function{{if profiler_results.num_functions_marked != 1}}s{{/if}}
                 {{/if}}
             </div>
         </div>
@@ -138,7 +141,7 @@
                 {{/each}}
             </table>
 
-            {{else}}
+            {{else GaeMiniProfiler.isSamplingEnabled(mode)}}
 
             {{if profiler_results.is_dev_server}}
             <span class="warn">
@@ -170,6 +173,74 @@
             </table>
 
 
+            {{/if}}
+            {{if GaeMiniProfiler.isLineByLineEnabled(mode)}}
+            {{if !profiler_results.is_dev_server}}
+            <span class="warn">
+                The line-by-line profiler can only be used in development.
+            </span>
+            {{else profiler_results.num_functions_marked == 0}}
+            <span>
+                To mark functions for profiling, put this in the source of the
+                file containing the function you want to profile:
+            </span>
+            <code>
+                from gae_mini_profiler.linebyline_profiler import line_profile<br>
+                <br>
+                # You can use it as a decorator...<br>
+                class SomeClass(object):<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;@line_profile<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;def some_instance_method(self):<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;self.cool_stuff()<br>
+                <br>
+                # ...or regular function call<br>
+                line_profile(SomeClass.some_instance_method)<br>
+                line_profile(some_other_function)
+            </code>
+            {{/if}}
+
+            {{each(i, fn_result) profiler_results.calls}}
+
+            <h3>${fn_result.func_name}</h3>
+            <h4>${fn_result.filename}:${fn_result.start_lineno}</h4>
+
+            <span>
+                Total Time: ${fn_result.total_time_ms_s} ms
+            </span>
+            <table>
+                <thead>
+                    <th>&nbsp;</th>
+                    <th>&nbsp;</th>
+                    <th><nobr>% Time</nobr></th>
+                    <th><nobr>Time (ms)</nobr></th>
+                    <th>Hits</th>
+                </thead>
+                <tbody>
+                {{each(j, timing) fn_result.timings}}
+                    {{if timing.perc_time > 10}}
+                    <tr class="linebyline-gt-10">
+                    {{else timing.perc_time > 1}}
+                    <tr class="linebyline-gt-1">
+                    {{else}}
+                    <tr>
+                    {{/if}}
+                        <td>${timing.lineno}</td>
+                        <td><pre>${timing.line}</pre></td>
+                        {{if timing.numhits != -1}}
+                        <td>${timing.perc_time_s}</td>
+                        <td>${timing.time_ms_s}</td>
+                        <td>${timing.numhits}</td>
+                        {{else}}
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        {{/if}}
+                    </tr>
+                {{/each}}
+                </tbody>
+            </table>
+
+            {{/each}}
             {{/if}}
         </div>
 

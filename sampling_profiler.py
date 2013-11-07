@@ -26,7 +26,7 @@ import time
 import threading
 import traceback
 
-from gae_mini_profiler import util
+from . import util
 
 _is_dev_server = os.environ["SERVER_SOFTWARE"].startswith("Devel")
 

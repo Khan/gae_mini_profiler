@@ -152,6 +152,28 @@
     color: #CCC;
 }
 
+.g-m-p .details table tr.linebyline-gt-10 {
+    background-color: #f33;
+}
+
+.g-m-p .details table tr.linebyline-gt-1 {
+    background-color: #faa;
+}
+
+.g-m-p .details h3 {
+    margin-top: 12px;
+    margin-bottom: 6px;
+}
+
+.g-m-p .details h4 {
+    margin-bottom: 6px;
+}
+
+.g-m-p code {
+    display: block;
+    font-family: monospace;
+}
+
 .g-m-p .details th, .g-m-p .details th.header {
     font-size: 12px;
     background-color: #F7F7F7;

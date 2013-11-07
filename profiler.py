@@ -78,9 +78,11 @@ class Mode(object):
     SIMPLE = "simple"  # Simple start/end timing for the request as a whole
     CPU_INSTRUMENTED = "instrumented"  # Profile all function calls
     CPU_SAMPLING = "sampling"  # Sample call stacks
+    CPU_LINEBYLINE = "linebyline" # Line-by-line profiling on a subset of functions
     RPC_ONLY = "rpc"  # Profile all RPC calls
     RPC_AND_CPU_INSTRUMENTED = "rpc_instrumented" # RPCs and all fxn calls
     RPC_AND_CPU_SAMPLING = "rpc_sampling" # RPCs and sample call stacks
+    RPC_AND_CPU_LINEBYLINE = "rpc_linebyline" # RPCs and line-by-line profiling
 
     @staticmethod
     def get_mode(environ):
@@ -95,9 +97,11 @@ class Mode(object):
                 Mode.SIMPLE,
                 Mode.CPU_INSTRUMENTED,
                 Mode.CPU_SAMPLING,
+                Mode.CPU_LINEBYLINE,
                 Mode.RPC_ONLY,
                 Mode.RPC_AND_CPU_INSTRUMENTED,
-                Mode.RPC_AND_CPU_SAMPLING]):
+                Mode.RPC_AND_CPU_SAMPLING,
+                Mode.RPC_AND_CPU_LINEBYLINE]):
             mode = Mode.RPC_AND_CPU_INSTRUMENTED
 
         return mode
@@ -107,19 +111,25 @@ class Mode(object):
         return mode in [
                 Mode.RPC_ONLY,
                 Mode.RPC_AND_CPU_INSTRUMENTED,
-                Mode.RPC_AND_CPU_SAMPLING];
+                Mode.RPC_AND_CPU_SAMPLING]
 
     @staticmethod
     def is_sampling_enabled(mode):
         return mode in [
                 Mode.CPU_SAMPLING,
-                Mode.RPC_AND_CPU_SAMPLING];
+                Mode.RPC_AND_CPU_SAMPLING]
 
     @staticmethod
     def is_instrumented_enabled(mode):
         return mode in [
                 Mode.CPU_INSTRUMENTED,
-                Mode.RPC_AND_CPU_INSTRUMENTED];
+                Mode.RPC_AND_CPU_INSTRUMENTED]
+
+    @staticmethod
+    def is_linebyline_enabled(mode):
+        return mode in [
+                Mode.CPU_LINEBYLINE,
+                Mode.RPC_AND_CPU_LINEBYLINE]
 
 
 class SharedStatsHandler(RequestHandler):
@@ -299,6 +309,7 @@ class RequestProfiler(object):
         self.mode = mode
         self.instrumented_prof = None
         self.sampling_prof = None
+        self.linebyline_prof = None
         self.appstats_prof = None
         self.temporary_redirect = False
         self.handler = None
@@ -321,6 +332,8 @@ class RequestProfiler(object):
             results.update(self.instrumented_prof.results())
         elif self.sampling_prof:
             results.update(self.sampling_prof.results())
+        elif self.linebyline_prof:
+            results.update(self.linebyline_prof.results())
 
         return results
 
@@ -378,7 +391,7 @@ class RequestProfiler(object):
                 # Note that we don't import appstats_profiler at the top of
                 # this file so we don't bring in a lot of imports for users who
                 # don't have the profiler enabled.
-                from gae_mini_profiler import appstats_profiler
+                from . import appstats_profiler
                 self.appstats_prof = appstats_profiler.Profile()
                 app = self.appstats_prof.wrap(app)
 
@@ -395,16 +408,21 @@ class RequestProfiler(object):
                 # Note that we don't import sampling_profiler at the top of
                 # this file so we don't bring in a lot of imports for users who
                 # don't have the profiler enabled.
-                from gae_mini_profiler import sampling_profiler
+                from . import sampling_profiler
                 self.sampling_prof = sampling_profiler.Profile()
                 result_fxn_wrapper = self.sampling_prof.run
+
+            elif Mode.is_linebyline_enabled(self.mode):
+                from . import linebyline_profiler
+                self.linebyline_prof = linebyline_profiler.Profile()
+                result_fxn_wrapper = self.linebyline_prof.run
 
             elif Mode.is_instrumented_enabled(self.mode):
                 # Turn on cProfile instrumented profiling for this request
                 # Note that we don't import instrumented_profiler at the top of
                 # this file so we don't bring in a lot of imports for users who
                 # don't have the profiler enabled.
-                from gae_mini_profiler import instrumented_profiler
+                from . import instrumented_profiler
                 self.instrumented_prof = instrumented_profiler.Profile()
                 result_fxn_wrapper = self.instrumented_prof.run
 
