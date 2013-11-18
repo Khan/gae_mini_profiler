@@ -175,9 +175,9 @@
 
             {{/if}}
             {{if GaeMiniProfiler.isLineByLineEnabled(mode)}}
-            {{if !profiler_results.is_dev_server}}
+            {{if profiler_results.err_msg}}
             <span class="warn">
-                The line-by-line profiler can only be used in development.
+                {{html profiler_results.err_msg}}
             </span>
             {{else profiler_results.num_functions_marked == 0}}
             <span>

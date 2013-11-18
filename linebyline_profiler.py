@@ -19,8 +19,11 @@ if _is_dev_server:
     # white-list the line_profiler C extension
     sys.meta_path[3]._enabled_regexes.append(re.compile(r'.*line_profiler.*'))
 
-    import line_profiler
-    assert line_profiler  # Silence pyflakes
+    try:
+        import line_profiler
+        assert line_profiler  # silence pyflakes
+    except ImportError:
+        line_profiler = None
 else:
     line_profiler = None
 
@@ -139,8 +142,20 @@ class Profile(object):
                 self.line_prof.add_function(f)
 
     def results(self):
+        err_msg = ""
+
+        if not _is_dev_server:
+            err_msg = "The line-by-line profiler can only be used in dev."
+        elif line_profiler is None:
+            err_msg = (
+                "Could not load the line_profiler module.<br><br>"
+                "Try installing the C extension like so:<br>"
+                "&nbsp;&nbsp;sudo pip install line_profiler==1.0b3<br>"
+                "&nbsp;&nbsp;(cd / && cp `python -c 'import _line_profiler; print _line_profiler.__file__'` %s)" % os.path.dirname(__file__)
+            )
+
         res = {
-            "is_dev_server": _is_dev_server,
+            "err_msg": err_msg,
             "num_functions_marked": self.num_functions_marked,
             "calls": []
         }
