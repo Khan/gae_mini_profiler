@@ -16,8 +16,14 @@ _is_dev_server = os.environ["SERVER_SOFTWARE"].startswith("Devel")
 # We can't use LineProfiler in production because it requires a C-extension,
 # but we can monkey-patch it in here for use on the dev server:
 if _is_dev_server:
-    # white-list the line_profiler C extension
-    sys.meta_path[3]._enabled_regexes.append(re.compile(r'.*line_profiler.*'))
+    if os.environ["SERVER_SOFTWARE"] == "Development/2.0":
+        # module name looks something like 'gae_mini_profiler._line_profiler'
+        sys.meta_path[3]._enabled_regexes.append(
+                re.compile(r'(?:.*\.)?_line_profiler$'))
+    else:
+        from google.appengine.tools import dev_appserver
+        if isinstance(sys.meta_path[0], dev_appserver.HardenedModulesHook):
+            sys.meta_path[0]._white_list_c_modules += ['_line_profiler']
 
     import line_profiler
     assert line_profiler  # Silence pyflakes
@@ -79,7 +85,7 @@ def _process_line_stats(line_stats):
         filename, start_lineno, func_name = key
 
         all_lines = linecache.getlines(filename)
-        sublines = inspect.getblock(all_lines[start_lineno-1:])
+        sublines = inspect.getblock(all_lines[start_lineno - 1:])
         end_lineno = start_lineno + len(sublines)
 
         line_to_timing = collections.defaultdict(lambda: (-1, 0))
@@ -91,7 +97,7 @@ def _process_line_stats(line_stats):
 
         for lineno in range(start_lineno, end_lineno):
             nhits, time = line_to_timing[lineno]
-            padded_timings.append( (lineno, nhits, time) )
+            padded_timings.append((lineno, nhits, time))
 
         timings = []
 
