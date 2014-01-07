@@ -134,7 +134,12 @@
     font-weight: bold;
 }
 
+.g-m-p .download-profile-link {
+    float: right;
+}
+
 .g-m-p .details table {
+    clear: both;
     margin-top: 6px;
     border-spacing: 0;
     font-size: 12px;

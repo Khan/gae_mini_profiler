@@ -19,6 +19,7 @@
                 <strong>Loading request</strong>
             </span> &mdash;
         {{/if}}
+
         <a href="/gae_mini_profiler/shared?request_id=${encodeURIComponent(request_id)}">Share request profile</a>
     </span>
 </script>
@@ -97,6 +98,7 @@
 
         <div class="profiler-details details fancy-scrollbar" style="display:none;">
             {{if GaeMiniProfiler.isInstrumentedEnabled(mode)}}
+            <a class="download-profile-link" href="/gae_mini_profiler/shared/raw?request_id=${encodeURIComponent(request_id)}" class="uses_script">Download raw profile</a>
 
             <table>
                 <thead>

@@ -6,6 +6,7 @@ import logging
 import os
 import re
 import urlparse
+import base64
 
 try:
     import threading
@@ -130,6 +131,25 @@ class Mode(object):
         return mode in [
                 Mode.CPU_LINEBYLINE,
                 Mode.RPC_AND_CPU_LINEBYLINE]
+
+class RawSharedStatsHandler(RequestHandler):
+    def get(self):
+        request_id = self.request.get("request_id")
+        request_stats = RequestStats.get(request_id)
+
+        if not request_stats:
+            self.response.out.write("Profiler stats no longer exist for this request.")
+            return
+
+        if not 'raw_stats' in request_stats.profiler_results:
+            self.response.out.write("No raw states available for this profile")
+            return
+
+        self.response.headers['Content-Disposition'] = (
+                'attachment; filename="g-m-p-%s.profile"' % str(request_id))
+        self.response.headers['Content-type'] = "application/octet-stream"
+        self.response.out.write(
+                base64.b64decode(request_stats.profiler_results['raw_stats']))
 
 
 class SharedStatsHandler(RequestHandler):

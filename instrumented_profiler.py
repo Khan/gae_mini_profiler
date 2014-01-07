@@ -19,6 +19,8 @@ over lots of function calls, this perf overhead will add up.
 import cProfile
 import pstats
 import StringIO
+import marshal
+import base64
 
 import util
 
@@ -33,8 +35,10 @@ class Profile(object):
         output = StringIO.StringIO()
         stats = pstats.Stats(self.c_profile, stream=output)
         stats.sort_stats("cumulative")
+        self.c_profile.create_stats()
 
         results = {
+            "raw_stats": base64.b64encode(marshal.dumps(self.c_profile.stats)),
             "total_call_count": stats.total_calls,
             "total_time": util.seconds_fmt(stats.total_tt),
             "calls": []
