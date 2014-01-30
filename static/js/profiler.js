@@ -267,8 +267,8 @@ var GaeMiniProfiler = {
             .find(".settings input")
                 .change(function() { GaeMiniProfiler.setCookieMode(this); return false; }).end()
             .click(function(e) { e.stopPropagation(); })
-            .css("left", jCorner.offset().left + jCorner.width() + 18)
-            .slideDown("fast");
+            .css("left", jCorner.offset().left + jCorner.outerWidth())
+            .show();
 
         var toggleLogRows = function(level) {
             var names = {10:'Debug', 20:'Info', 30:'Warning', 40:'Error', 50:'Critical'};
@@ -403,10 +403,18 @@ var GaeMiniProfiler = {
                 fFirst = true;
             }
 
+            perfClass = "";
+            if (data.profiler_results.total_time > 1000) {
+                perfClass = "very-slow"
+            } else if (data.profiler_results.total_time > 500) {
+                perfClass = "slow";
+            }
+
             return jCorner.append(
                     $("#profilerCornerEntryTemplate")
                         .tmplPlugin(data)
                         .addClass(fFirst ? "" : "ajax")
+                        .addClass(perfClass)
                         .click(function() { GaeMiniProfiler.expand(this, data); return false; })
                     );
         }
