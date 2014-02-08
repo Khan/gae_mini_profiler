@@ -23,7 +23,6 @@ import logging
 import sys
 import time
 import threading
-import traceback
 
 from . import util
 
@@ -49,9 +48,9 @@ class InspectingThread(threading.Thread):
         
         This will run, periodically inspecting and then sleeping, until
         manually stopped via stop()."""
+
         # Keep sampling until this thread is explicitly stopped.
         while not self.should_stop():
-
             # Take a sample of the main request thread's frame stack...
             self.profile.take_sample()
 
@@ -61,8 +60,28 @@ class InspectingThread(threading.Thread):
 
 class ProfileSample(object):
     """Single stack trace sample gathered during a periodic inspection."""
-    def __init__(self, stack):
-        self.stack_trace = traceback.extract_stack(stack)
+    def __init__(self, stack_trace):
+        # stack_trace should be a list of (filename, line_num, function_name)
+        # triples.
+        self.stack_trace = stack_trace
+
+    @staticmethod
+    def from_frame(active_frame):
+        """Creates a profile from the current frame of a particular thread.
+
+        The "active_frame" parameter should be the current frame from some
+        thread, as returned by sys._current_frames(). Note that we must walk
+        the stack trace up-front at sampling time, since it will change out
+        from under us if we wait to access it."""
+        stack_trace = []
+        frame = active_frame
+        while frame is not None:
+            code = frame.f_code
+            stack_trace.append(
+                (code.co_filename, frame.f_lineno, code.co_name))
+            frame = frame.f_back
+
+        return ProfileSample(stack_trace)
 
 
 class Profile(object):
@@ -83,9 +102,9 @@ class Profile(object):
         total_samples = len(self.samples)
 
         for sample in self.samples:
-            for filename, line_num, function_name, src in sample.stack_trace:
-                aggregated_calls["%s\n\n%s:%s (%s)" %
-                        (src, filename, line_num, function_name)] += 1
+            for filename, line_num, function_name in sample.stack_trace:
+                aggregated_calls["%s:%s (%s)" %
+                        (filename, line_num, function_name)] += 1
 
         # Turn aggregated call samples into dictionary of results
         calls = [{
@@ -108,17 +127,18 @@ class Profile(object):
     def take_sample(self):
         # Look at stacks of all existing threads...
         # See http://bzimmer.ziclix.com/2008/12/17/python-thread-dumps/
-        for thread_id, stack in sys._current_frames().items():
+        for thread_id, active_frame in sys._current_frames().items():
             # ...but only sample from the main request thread.
             # TODO(kamens): this profiler will need work if we ever
             # actually use multiple threads in a single request and want to
             # profile more than one of them.
             if thread_id == self.current_request_thread_id:
                 # Grab a sample of this thread's current stack
-                self.samples.append(ProfileSample(stack))
+                self.samples.append(ProfileSample.from_frame(active_frame))
 
     def run(self, fxn):
         """Run function with samping profiler enabled, saving results."""
+
         if not hasattr(threading, "current_thread"):
             # Sampling profiler is not supported in Python2.5
             logging.warn("The sampling profiler is not supported in Python2.5")
