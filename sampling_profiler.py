@@ -47,7 +47,15 @@ class InspectingThread(threading.Thread):
         """Start periodic profiler inspections.
         
         This will run, periodically inspecting and then sleeping, until
-        manually stopped via stop()."""
+        manually stopped via stop().
+
+        We try to "stay on schedule" by keeping track of the time we should be
+        at and sleeping until that time. This means that if we stop running for
+        a while due to context switching or other pauses, we'll start sampling
+        faster to catch up, so we'll get the right number of samples in the
+        end, but the samples may not be perfectly even."""
+
+        next_sample_time_seconds = time.time()
 
         # Keep sampling until this thread is explicitly stopped.
         while not self.should_stop():
@@ -55,7 +63,11 @@ class InspectingThread(threading.Thread):
             self.profile.take_sample()
 
             # ...then sleep and let it do some more work.
-            time.sleep(1.0 / InspectingThread.SAMPLES_PER_SECOND)
+            next_sample_time_seconds += (
+                1.0 / InspectingThread.SAMPLES_PER_SECOND)
+            seconds_to_sleep = next_sample_time_seconds - time.time()
+            if seconds_to_sleep > 0:
+                time.sleep(seconds_to_sleep)
 
 
 class ProfileSample(object):
