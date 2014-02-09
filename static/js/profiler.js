@@ -266,6 +266,8 @@ var GaeMiniProfiler = {
                 .click(function() { GaeMiniProfiler.toggleSettings(this); return false; }).end()
             .find(".settings input")
                 .change(function() { GaeMiniProfiler.setCookieMode(this); return false; }).end()
+            .find(".sample-number-input")
+                .on("input", function() { GaeMiniProfiler.updateSampleNumber(this, data); }).end()
             .click(function(e) { e.stopPropagation(); })
             .css("left", jCorner.offset().left + jCorner.outerWidth())
             .show();
@@ -419,6 +421,40 @@ var GaeMiniProfiler = {
                     );
         }
         return null;
+    },
+
+    /**
+     * Update the table of stack frames with the stack trace for the currently
+     * selected sample. This requires rebuilding the stack information from the
+     * compressed format given in the profiler results.
+     */
+    updateSampleNumber: function(elInput, data) {
+        var jTable = $(elInput).closest(".g-m-p").find(".sample-table");
+        var jTableBody = jTable.find("tbody");
+        jTableBody.empty();
+
+        // Each element of the compressedStacks array is an ordered array of
+        // indexes into the frameNames array, one for each stack frame.
+        var frameNames = data.profiler_results.frame_names;
+        var compressedStacks = data.profiler_results.compressed_stacks;
+
+        var stackIndex = $(elInput).val();
+        // If the index isn't valid, we just clear the table.
+        if (!(stackIndex in compressedStacks)) {
+            return;
+        }
+
+        var compressedStack = compressedStacks[stackIndex];
+
+        for (var i = 0; i < compressedStack.length; i++) {
+            var frameName = frameNames[compressedStack[i]];
+            var depth = compressedStack.length - i - 1;
+            jTableBody.append("<tr><td>" + depth + "</td>" +
+                    "<td>" + frameName + "</td></tr>");
+        }
+
+        // TODO(alan): Keep the same sort order as before.
+        jTable.trigger("update");
     }
 };
 

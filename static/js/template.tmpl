@@ -149,25 +149,18 @@
 
             {{else GaeMiniProfiler.isSamplingEnabled(mode)}}
 
-            <table>
+            Sample number:
+            <input class="sample-number-input" type="text"/>
+
+            <table class="sample-table">
                 <thead>
                     <tr>
-                        <th class="left">line</th>
-                        <th class="right headerSortDown"><nobr># of samples</nobr></th>
-                        <th class="right headerSortDown"><nobr>% of samples</nobr></th>
+                        <th class="left">depth</th>
+                        <th class="left">stack frame</th>
                     </tr>
                 </thead>
-                {{each profiler_results.calls}}
-
-                <tr>
-                    <td title="${$value.func_desc}">${$value.func_desc_short}</td>
-                    <td class="right">
-                        ${$value.count_samples}
-                    </td>
-                    <td class="right">${$value.per_samples}</td>
-                </tr>
-
-                {{/each}}
+                <tbody>
+                </tbody>
             </table>
 
 

@@ -95,6 +95,11 @@ class ProfileSample(object):
 
         return ProfileSample(stack_trace)
 
+    def get_frame_descriptions(self):
+        """Gets a list of text descriptions, one for each frame, in order."""
+        return ["%s:%s (%s)" % file_line_func
+                for file_line_func in self.stack_trace]
+
 
 class Profile(object):
     """Profiler that periodically inspects a request and logs stack traces."""
@@ -113,26 +118,27 @@ class Profile(object):
         aggregated_calls = defaultdict(int)
         total_samples = len(self.samples)
 
+        # Compress the results by keeping an array of all of the frame
+        # descriptions (we expect that there won't be that many total of them).
+        # Each actual stack trace is given as an ordered list of indexes into
+        # the array of frames.
+        frames = []
+        frame_indexes = {}
+
         for sample in self.samples:
-            for filename, line_num, function_name in sample.stack_trace:
-                aggregated_calls["%s:%s (%s)" %
-                        (filename, line_num, function_name)] += 1
+            for frame_desc in sample.get_frame_descriptions():
+                if not frame_desc in frame_indexes:
+                    frame_indexes[frame_desc] = len(frames)
+                    frames.append(frame_desc)
 
-        # Turn aggregated call samples into dictionary of results
-        calls = [{
-            "func_desc": item[0],
-            "func_desc_short": util.short_method_fmt(item[0]),
-            "count_samples": item[1],
-            "per_samples": "%s%%" % util.decimal_fmt(
-                100.0 * item[1] / total_samples),
-            } for item in aggregated_calls.items()]
-
-        # Sort call sample results by # of times calls appeared in a sample
-        calls = sorted(calls, reverse=True,
-            key=lambda call: call["count_samples"])
+        compressed_stacks = [
+            [frame_indexes[desc] for desc in sample.get_frame_descriptions()]
+            for sample in self.samples]
 
         return {
-                "calls": calls,
+                "frame_names": [
+                    util.short_method_fmt(frame) for frame in frames],
+                "compressed_stacks": compressed_stacks,
                 "total_samples": total_samples,
             }
 
