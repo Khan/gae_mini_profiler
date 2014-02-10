@@ -369,16 +369,68 @@
     /*height: .2em;*/
 }
 
-.g-m-p .sample-number-slider {
-    width: 280px;
-    display: inline-block;
-    margin-left: 8px;
-    vertical-align: middle;
+.g-m-p .sampling-profiler-help {
+    text-align: right;
+    padding:2px 0 8px 0;
+    width: 400px
+}
+
+.g-m-p .sampling-profiler-help-popup {
+    display:inline-block
+}
+
+.g-m-p .sampling-profiler-help-text {
+    display: none;
+    max-width: 380px;
+    border: 2px solid #ddd;
+    border-radius: 3px;
+    position: absolute;
+    background-color: #fff;
+    padding: 10px;
+    margin-left: 2px;
+    text-align:left;
+    right: 10px;
+}
+
+.g-m-p .sampling-profiler-help-popup:hover .sampling-profiler-help-text {
+    display: block;
 }
 
 .g-m-p .sample-timestamp-display {
-    width: 8em;
+    width: 100px;
     display: inline-block;
+    vertical-align: middle;
+}
+
+.g-m-p .sample-timestamp {
+    padding-right: 10px;
+}
+
+.g-m-p .sample-timestamp-slider-area {
+    width: 280px;
+    display: inline-block;
+    vertical-align: middle;
+    font-size: 80%;
+}
+
+.g-m-p .sample-number-slider {
+    width: 200px;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.g-m-p .ignore-frames-display {
+    width: 100px;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.g-m-p .sample-num-frames-ignored {
+    padding-right: 20px;
+}
+
+.g-m-p .ignore-frames-slider {
+    width: 280px;
     vertical-align: middle;
 }
 

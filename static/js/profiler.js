@@ -268,6 +268,8 @@ var GaeMiniProfiler = {
                 .change(function() { GaeMiniProfiler.setCookieMode(this); return false; }).end()
             .find(".sample-number-slider")
                 .change(function() { GaeMiniProfiler.updateSampleNumber(this, data); }).end()
+            .find(".ignore-frames-slider")
+                .on("input", function() { GaeMiniProfiler.updateSampleNumber(this, data); }).end()
             .click(function(e) { e.stopPropagation(); })
             .css("left", jCorner.offset().left + jCorner.outerWidth())
             .show();
@@ -432,10 +434,13 @@ var GaeMiniProfiler = {
      * selected sample. This requires rebuilding the stack information from the
      * compressed format given in the profiler results.
      */
-    updateSampleNumber: function(elSlider, data) {
-        var jTable = $(elSlider).closest(".g-m-p").find(".sample-table");
-        var jSampleTimestamp =
-                $(elSlider).closest(".g-m-p").find(".sample-timestamp");
+    updateSampleNumber: function(element, data) {
+        var searchRoot = $(element).closest(".g-m-p");
+        var jSlider = searchRoot.find(".sample-number-slider");
+        var jTable = searchRoot.find(".sample-table");
+        var jSampleTimestamp = searchRoot.find(".sample-timestamp");
+        var jIgnoreFramesInput = searchRoot.find(".ignore-frames-slider");
+        var jIgnoredFrames = searchRoot.find(".sample-num-frames-ignored");
         var jTableBody = jTable.find("tbody");
 
         // Each element of the samples array contains an ordered array of
@@ -443,29 +448,25 @@ var GaeMiniProfiler = {
         var frameNames = data.profiler_results.frame_names;
         var samples = data.profiler_results.samples;
 
-        var sampleIndex = $(elSlider).val();
-
-        jTableBody.empty();
-        jSampleTimestamp.html("");
-
-        // If the index isn't valid, we just clear the table.
-        if (!(sampleIndex in samples)) {
-            return;
-        }
+        var sampleIndex = jSlider.val();
+        var minFrameToDisplay = jIgnoreFramesInput.val();
 
         jSampleTimestamp.html(samples[sampleIndex].timestamp_ms + "ms");
+        jIgnoredFrames.html(minFrameToDisplay);
 
         GaeMiniProfiler.buildSampleTable(jTable,
-                samples[sampleIndex].stack_frames, frameNames);
+                samples[sampleIndex].stack_frames, frameNames,
+                minFrameToDisplay);
     },
 
     /**
      * Builds the table that displays the stack trace for the currently
-     * selected sample. We assume that the table is emptied before this
-     * function is called.
+     * selected sample.
      */
-    buildSampleTable: function(jTable, compressedStack, frameNames) {
+    buildSampleTable: function(jTable, compressedStack, frameNames,
+            minFrameToDisplay) {
         var jTableBody = jTable.find("tbody");
+        jTableBody.empty();
 
         // Ideally, tableSorter would automatically sort the list in the user's
         // specified sort order, but that ends up being really tricky because
@@ -492,6 +493,9 @@ var GaeMiniProfiler = {
             var index = reverseOrder ? compressedStack.length - i - 1 : i;
             var frameName = frameNames[compressedStack[index]];
             var depth = compressedStack.length - index - 1;
+            if (depth < minFrameToDisplay) {
+                continue;
+            }
             jTableBody.append("<tr><td>" + depth + "</td>" +
                     "<td>" + frameName + "</td></tr>");
         }

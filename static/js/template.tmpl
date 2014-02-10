@@ -149,9 +149,42 @@
 
             {{else GaeMiniProfiler.isSamplingEnabled(mode)}}
 
-            <span class="sample-timestamp-display">Time: <span class="sample-timestamp"></span></span>
-            <input type="range" min="0" max="${profiler_results.total_samples - 1}"
-                    value="0" class="sample-number-slider">
+            <div class="sampling-profiler-help">
+                How to use the
+                <div class="sampling-profiler-help-popup" style="display:inline-block">
+                    <a href="javascript:void()" class="uses_script">sampling profile viewer</a>
+                    <div class="sampling-profiler-help-text">
+                        Cross-reference with
+                        {{if GaeMiniProfiler.isRpcEnabled(mode)}}
+                            <a target="_appstats" href="/_ah/stats/details?time=${appstats_results.appstats_key}">Appstats</a>
+                        {{else}}
+                            Appstats (requires RPC profiling)
+                        {{/if}}
+                        to discover what CPU activity is happening when no RPCs
+                        are active.
+                        <br><br>
+                        Sort by depth ascending and hide unnecessary frames to
+                        watch the stack trace change over time.
+                    </div>
+                </div>
+            </div>
+            <div>
+                <span class="sample-timestamp-display">
+                    <b>Time:</b>
+                    <span class="sample-timestamp"></span>
+                </span>
+                <span class="sample-timestamp-slider-area">
+                    0ms
+                    <input type="range" min="0" max="${profiler_results.total_samples - 1}"
+                            value="0" class="sample-number-slider">
+                    ${profiler_results.samples[profiler_results.total_samples - 1].timestamp_ms}ms
+                </span>
+            </div>
+            <div>
+                <span class="ignore-frames-display"><b>Hide frames:</b>
+                    <span class="sample-num-frames-ignored"></span></span></span>
+                <input type="range" min="0" max="50" value="0" class="ignore-frames-slider">
+            </div>
 
             <table class="sample-table">
                 <thead>
@@ -163,7 +196,6 @@
                 <tbody>
                 </tbody>
             </table>
-
 
             {{/if}}
             {{if GaeMiniProfiler.isLineByLineEnabled(mode)}}
