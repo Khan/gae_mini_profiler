@@ -72,13 +72,14 @@ class InspectingThread(threading.Thread):
 
 class ProfileSample(object):
     """Single stack trace sample gathered during a periodic inspection."""
-    def __init__(self, stack_trace):
+    def __init__(self, stack_trace, timestamp_ms):
         # stack_trace should be a list of (filename, line_num, function_name)
         # triples.
         self.stack_trace = stack_trace
+        self.timestamp_ms = timestamp_ms
 
     @staticmethod
-    def from_frame(active_frame):
+    def from_frame_and_timestamp(active_frame, timestamp_ms):
         """Creates a profile from the current frame of a particular thread.
 
         The "active_frame" parameter should be the current frame from some
@@ -93,7 +94,7 @@ class ProfileSample(object):
                 (code.co_filename, frame.f_lineno, code.co_name))
             frame = frame.f_back
 
-        return ProfileSample(stack_trace)
+        return ProfileSample(stack_trace, timestamp_ms)
 
     def get_frame_descriptions(self):
         """Gets a list of text descriptions, one for each frame, in order."""
@@ -113,6 +114,8 @@ class Profile(object):
         # Thread that constantly waits, inspects, waits, inspect, ...
         self.inspecting_thread = None
 
+        self.start_time = time.time()
+
     def results(self):
         """Return sampling results in a dictionary for template context."""
         aggregated_calls = defaultdict(int)
@@ -131,14 +134,16 @@ class Profile(object):
                     frame_indexes[frame_desc] = len(frames)
                     frames.append(frame_desc)
 
-        compressed_stacks = [
-            [frame_indexes[desc] for desc in sample.get_frame_descriptions()]
-            for sample in self.samples]
+        samples = [{
+                "timestamp_ms": util.milliseconds_fmt(sample.timestamp_ms, 1),
+                "stack_frames": [frame_indexes[desc]
+                                 for desc in sample.get_frame_descriptions()]
+            } for sample in self.samples]
 
         return {
                 "frame_names": [
                     util.short_method_fmt(frame) for frame in frames],
-                "compressed_stacks": compressed_stacks,
+                "samples": samples,
                 "total_samples": total_samples,
             }
 
@@ -152,7 +157,9 @@ class Profile(object):
             # profile more than one of them.
             if thread_id == self.current_request_thread_id:
                 # Grab a sample of this thread's current stack
-                self.samples.append(ProfileSample.from_frame(active_frame))
+                timestamp_ms = (time.time() - self.start_time) * 1000
+                self.samples.append(ProfileSample.from_frame_and_timestamp(
+                        active_frame, timestamp_ms))
 
     def run(self, fxn):
         """Run function with samping profiler enabled, saving results."""

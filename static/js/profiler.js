@@ -430,22 +430,28 @@ var GaeMiniProfiler = {
      */
     updateSampleNumber: function(elInput, data) {
         var jTable = $(elInput).closest(".g-m-p").find(".sample-table");
+        var jSampleTimestamp =
+                $(elInput).closest(".g-m-p").find(".sample-timestamp");
         var jTableBody = jTable.find("tbody");
-        jTableBody.empty();
 
-        // Each element of the compressedStacks array is an ordered array of
+        // Each element of the samples array contains an ordered array of
         // indexes into the frameNames array, one for each stack frame.
         var frameNames = data.profiler_results.frame_names;
-        var compressedStacks = data.profiler_results.compressed_stacks;
+        var samples = data.profiler_results.samples;
 
-        var stackIndex = $(elInput).val();
+        var sampleIndex = $(elInput).val();
+
+        jTableBody.empty();
+        jSampleTimestamp.html("");
+
         // If the index isn't valid, we just clear the table.
-        if (!(stackIndex in compressedStacks)) {
+        if (!(sampleIndex in samples)) {
             return;
         }
 
-        var compressedStack = compressedStacks[stackIndex];
+        jSampleTimestamp.html(samples[sampleIndex].timestamp_ms + "ms");
 
+        var compressedStack = samples[sampleIndex].stack_frames;
         for (var i = 0; i < compressedStack.length; i++) {
             var frameName = frameNames[compressedStack[i]];
             var depth = compressedStack.length - i - 1;
