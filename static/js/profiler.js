@@ -451,15 +451,47 @@ var GaeMiniProfiler = {
 
         jSampleTimestamp.html(samples[sampleIndex].timestamp_ms + "ms");
 
-        var compressedStack = samples[sampleIndex].stack_frames;
+        GaeMiniProfiler.buildSampleTable(jTable,
+                samples[sampleIndex].stack_frames, frameNames);
+    },
+
+    /**
+     * Builds the table that displays the stack trace for the currently
+     * selected sample. We assume that the table is emptied before this
+     * function is called.
+     */
+    buildSampleTable: function(jTable, compressedStack, frameNames) {
+        var jTableBody = jTable.find("tbody");
+
+        // Ideally, tableSorter would automatically sort the list in the user's
+        // specified sort order, but that ends up being really tricky because
+        // the refresh happens asynchronously and it's easy to accidentally
+        // break tableSorter's internal state. See this page for a discussion
+        // of a number of hacky solutions:
+        // https://forum.jquery.com/topic/dynamically-updating-tablesorter-two-problems
+        //
+        // In our case, we want to avoid any kind of flicker, and really the
+        // only use case that we care about is reverse-sorting the stack
+        // frames, so we just do the "sorting" manually by checking the user's
+        // sort preference and rendering in that direction.
+        var reverseOrder = false;
+        if (jTable.length && jTable.get(0).config) {
+            var sortList = jTable.get(0).config.sortList;
+            // Match on the [0, 0] array (column 0, ascending).
+            if (sortList.length > 0 && sortList[0][0] === 0 &&
+                    sortList[0][1] === 0) {
+                reverseOrder = true;
+            }
+        }
+
         for (var i = 0; i < compressedStack.length; i++) {
-            var frameName = frameNames[compressedStack[i]];
-            var depth = compressedStack.length - i - 1;
+            var index = reverseOrder ? compressedStack.length - i - 1 : i;
+            var frameName = frameNames[compressedStack[index]];
+            var depth = compressedStack.length - index - 1;
             jTableBody.append("<tr><td>" + depth + "</td>" +
                     "<td>" + frameName + "</td></tr>");
         }
 
-        // TODO(alan): Keep the same sort order as before.
         jTable.trigger("update");
     }
 };
