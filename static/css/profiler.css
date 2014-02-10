@@ -369,6 +369,28 @@
     /*height: .2em;*/
 }
 
+.g-m-p .sample-number-slider {
+    width: 280px;
+    display: inline-block;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+.g-m-p .sample-timestamp-display {
+    width: 8em;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.g-m-p .sample-table {
+    width: 400px;
+    table-layout: fixed;
+}
+
+.g-m-p .sample-depth-column {
+    width: 3em;
+}
+
 /* Borrowed from those smart guys @ Fog Creek. Props to Justin & Bobby */
 .g-m-p .fancy-scrollbar::-webkit-scrollbar {
   height: 8px;

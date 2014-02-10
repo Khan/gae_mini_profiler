@@ -149,14 +149,14 @@
 
             {{else GaeMiniProfiler.isSamplingEnabled(mode)}}
 
-            Sample number:
-            <input class="sample-number-input" type="text"/>
-            Time: <span class="sample-timestamp"></span>
+            <span class="sample-timestamp-display">Time: <span class="sample-timestamp"></span></span>
+            <input type="range" min="0" max="${profiler_results.total_samples - 1}"
+                    value="0" class="sample-number-slider">
 
             <table class="sample-table">
                 <thead>
                     <tr>
-                        <th class="left">depth</th>
+                        <th class="left sample-depth-column">depth</th>
                         <th class="left">stack frame</th>
                     </tr>
                 </thead>

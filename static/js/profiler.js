@@ -266,11 +266,16 @@ var GaeMiniProfiler = {
                 .click(function() { GaeMiniProfiler.toggleSettings(this); return false; }).end()
             .find(".settings input")
                 .change(function() { GaeMiniProfiler.setCookieMode(this); return false; }).end()
-            .find(".sample-number-input")
-                .on("input", function() { GaeMiniProfiler.updateSampleNumber(this, data); }).end()
+            .find(".sample-number-slider")
+                .change(function() { GaeMiniProfiler.updateSampleNumber(this, data); }).end()
             .click(function(e) { e.stopPropagation(); })
             .css("left", jCorner.offset().left + jCorner.outerWidth())
             .show();
+
+        var jSampleSlider = jPopup.find(".sample-number-slider");
+        if (jSampleSlider.length) {
+            this.updateSampleNumber(jSampleSlider.get(0), data);
+        }
 
         var toggleLogRows = function(level) {
             var names = {10:'Debug', 20:'Info', 30:'Warning', 40:'Error', 50:'Critical'};
@@ -377,7 +382,6 @@ var GaeMiniProfiler = {
                         .tablesorter()
                         .data("table-sorted", true);
                 }
-
             });
         }
     },
@@ -428,10 +432,10 @@ var GaeMiniProfiler = {
      * selected sample. This requires rebuilding the stack information from the
      * compressed format given in the profiler results.
      */
-    updateSampleNumber: function(elInput, data) {
-        var jTable = $(elInput).closest(".g-m-p").find(".sample-table");
+    updateSampleNumber: function(elSlider, data) {
+        var jTable = $(elSlider).closest(".g-m-p").find(".sample-table");
         var jSampleTimestamp =
-                $(elInput).closest(".g-m-p").find(".sample-timestamp");
+                $(elSlider).closest(".g-m-p").find(".sample-timestamp");
         var jTableBody = jTable.find("tbody");
 
         // Each element of the samples array contains an ordered array of
@@ -439,7 +443,7 @@ var GaeMiniProfiler = {
         var frameNames = data.profiler_results.frame_names;
         var samples = data.profiler_results.samples;
 
-        var sampleIndex = $(elInput).val();
+        var sampleIndex = $(elSlider).val();
 
         jTableBody.empty();
         jSampleTimestamp.html("");
