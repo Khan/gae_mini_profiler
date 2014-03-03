@@ -505,18 +505,26 @@ var GaeMiniProfiler = {
 };
 
 var GaeMiniProfilerTemplate = {
-
-    template: null,
+    _promise: null,
 
     init: function(callback) {
-        $.get("/gae_mini_profiler/static/js/template.tmpl", function (data) {
+        // We only make one request to fetch the template, even though init is
+        // called many times
+        if (!this._promise) {
+            this._promise = $.get("/gae_mini_profiler/static/js/template.tmpl",
+                function(data) {
+                    if (data) {
+                        $('body').append(data);
+                    }
+                });
+        }
+
+        this._promise.then(function(data) {
             if (data) {
-                $('body').append(data);
                 callback();
             }
         });
     }
-
 };
 
 /*
