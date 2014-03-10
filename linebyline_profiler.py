@@ -17,9 +17,16 @@ _is_dev_server = os.environ["SERVER_SOFTWARE"].startswith("Devel")
 # but we can monkey-patch it in here for use on the dev server:
 if _is_dev_server:
     if os.environ["SERVER_SOFTWARE"] == "Development/2.0":
-        # module name looks something like 'gae_mini_profiler._line_profiler'
-        sys.meta_path[3]._enabled_regexes.append(
-                re.compile(r'(?:.*\.)?_line_profiler$'))
+        from google.appengine.tools.devappserver2.python import sandbox
+        for meta in sys.meta_path:
+            if isinstance(meta, sandbox.PathRestrictingImportHook):
+                # module name looks something like
+                # 'gae_mini_profiler._line_profiler'
+                meta._enabled_regexes.append(
+                        re.compile(r'(?:.*\.)?_line_profiler$'))
+                break
+        else:
+            assert False, "Can't find PathRestrictingImportHook in meta_path"
     else:
         from google.appengine.tools import dev_appserver
         if isinstance(sys.meta_path[0], dev_appserver.HardenedModulesHook):
