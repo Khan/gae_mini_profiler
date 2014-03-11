@@ -267,7 +267,7 @@ var GaeMiniProfiler = {
             .find(".settings input")
                 .change(function() { GaeMiniProfiler.setCookieMode(this); return false; }).end()
             .find(".sample-number-slider")
-                .change(function() { GaeMiniProfiler.updateSampleNumber(this, data); }).end()
+                .on("input", function() { GaeMiniProfiler.updateSampleNumber(this, data); }).end()
             .find(".ignore-frames-slider")
                 .on("input", function() { GaeMiniProfiler.updateSampleNumber(this, data); }).end()
             .click(function(e) { e.stopPropagation(); })
