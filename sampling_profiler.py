@@ -36,9 +36,10 @@ class InspectingThread(threading.Thread):
         self.profile = profile
 
     def stop(self):
-        """Stop this thread."""
+        """Signal the thread to stop and block until it is finished."""
         # http://stackoverflow.com/questions/323972/is-there-any-way-to-kill-a-thread-in-python
         self._stop_event.set()
+        self.join()
 
     def should_stop(self):
         return self._stop_event.is_set()
