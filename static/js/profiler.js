@@ -357,6 +357,8 @@ var GaeMiniProfiler = {
         var cpuSelector = "#cpu_disabled";
         if (this.isInstrumentedEnabled(mode)) {
             cpuSelector = "#cpu_instrumented";
+        } else if (this.isMemorySamplingEnabled(mode)) {
+            cpuSelector = "#cpu_memory_sampling";
         } else if (this.isSamplingEnabled(mode)) {
             cpuSelector = "#cpu_sampling";
         } else if (this.isLineByLineEnabled(mode)) {
@@ -469,7 +471,7 @@ var GaeMiniProfiler = {
         jSampleTimestamp.html(samples[sampleIndex].timestamp_ms + "ms");
         jIgnoredFrames.html(minFrameToDisplay);
 
-        if (jSampleMemory) {
+        if (jSampleMemory.length) {
             if (samples[sampleIndex].memory_used) {
                 var memoryIndex = sampleIndex;
                 var sampledAt = "";
