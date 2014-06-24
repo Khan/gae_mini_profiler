@@ -80,7 +80,11 @@ class Profile(object):
             request = trace.request_data_summary()
             response = trace.response_data_summary()
 
-            likely_dupe = request in requests_set
+            # GetSystemStatsRequest is time-dependent, so repeated calls are
+            # likely intentional for profiling purposes.  In particular, the
+            # memory sampling profiler generates a lot of these RPCs in prod.
+            likely_dupe = (request in requests_set
+                           and not 'GetSystemStatsRequest' in request)
             likely_dupes = likely_dupes or likely_dupe
             requests_set.add(request)
 
