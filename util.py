@@ -1,3 +1,7 @@
+import os
+
+dev_server = os.environ["SERVER_SOFTWARE"].startswith("Devel")
+
 def seconds_fmt(f, n=0):
     return milliseconds_fmt(f * 1000, n)
 

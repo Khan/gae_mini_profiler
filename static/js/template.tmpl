@@ -49,6 +49,7 @@
                     <td>
                         <input type="radio" id="cpu_instrumented" name="cpu" value="instrumented"/><label for="cpu_instrumented"> instrumented</label><br>
                         <input type="radio" id="cpu_sampling" name="cpu" value="sampling"/><label for="cpu_sampling"> sampling</label><br>
+                        <input type="radio" id="cpu_memory_sampling" name="cpu" value="memory_sampling"/><label for="cpu_memory_sampling"> sampling with memory</label><br>
                         <input type="radio" id="cpu_linebyline" name="cpu" value="linebyline"/><label for="cpu_linebyline"> line-by-line</label><br>
                         <input type="radio" id="cpu_disabled" name="cpu" value=""/><label for="cpu_disabled"> disabled</label>
                     </td>
@@ -180,6 +181,15 @@
                     ${profiler_results.samples[profiler_results.total_samples - 1].timestamp_ms}ms
                 </span>
             </div>
+            {{if GaeMiniProfiler.isMemorySamplingEnabled(mode)}}
+                <div>
+                    <span class="sample-memory-display">
+                        <b>Memory:</b>
+                        <span class="sample-memory"></span>
+                        <span class="sample-memory-increase"></span>
+                    </span>
+                </div>
+            {{/if}}
             <div>
                 <span class="ignore-frames-display"><b>Hide frames:</b>
                     <span class="sample-num-frames-ignored"></span></span></span>

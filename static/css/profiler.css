@@ -419,6 +419,16 @@
     vertical-align: middle;
 }
 
+.g-m-p .sample-memory-display {
+    width: 300px;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.g-m-p .sample-memory{
+    padding-right: 10px;
+}
+
 .g-m-p .ignore-frames-display {
     width: 100px;
     display: inline-block;

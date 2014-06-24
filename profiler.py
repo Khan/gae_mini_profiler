@@ -33,9 +33,6 @@ import pickle
 import config
 import util
 
-dev_server = os.environ["SERVER_SOFTWARE"].startswith("Devel")
-
-
 class CurrentRequestId(object):
     """A per-request identifier accessed by other pieces of mini profiler.
     
@@ -50,14 +47,14 @@ class CurrentRequestId(object):
 
     @staticmethod
     def get():
-        if dev_server:
+        if util.dev_server:
             return CurrentRequestId.dev_server_request_id
         else:
             return CurrentRequestId._local.request_id
 
     @staticmethod
     def set(request_id):
-        if dev_server:
+        if util.dev_server:
             CurrentRequestId.dev_server_request_id = request_id
         else:
             CurrentRequestId._local.request_id = request_id
@@ -79,10 +76,13 @@ class Mode(object):
     SIMPLE = "simple"  # Simple start/end timing for the request as a whole
     CPU_INSTRUMENTED = "instrumented"  # Profile all function calls
     CPU_SAMPLING = "sampling"  # Sample call stacks
+    CPU_MEMORY_SAMPLING = "memory_sampling"  # Sample call stacks and memory
     CPU_LINEBYLINE = "linebyline" # Line-by-line profiling on a subset of functions
     RPC_ONLY = "rpc"  # Profile all RPC calls
     RPC_AND_CPU_INSTRUMENTED = "rpc_instrumented" # RPCs and all fxn calls
     RPC_AND_CPU_SAMPLING = "rpc_sampling" # RPCs and sample call stacks
+    RPC_AND_CPU_MEMORY_SAMPLING = "rpc_memory_sampling" # RPCs and sample call
+                                                        # stacks and memory
     RPC_AND_CPU_LINEBYLINE = "rpc_linebyline" # RPCs and line-by-line profiling
 
     @staticmethod
@@ -98,10 +98,12 @@ class Mode(object):
                 Mode.SIMPLE,
                 Mode.CPU_INSTRUMENTED,
                 Mode.CPU_SAMPLING,
+                Mode.CPU_MEMORY_SAMPLING,
                 Mode.CPU_LINEBYLINE,
                 Mode.RPC_ONLY,
                 Mode.RPC_AND_CPU_INSTRUMENTED,
                 Mode.RPC_AND_CPU_SAMPLING,
+                Mode.RPC_AND_CPU_MEMORY_SAMPLING,
                 Mode.RPC_AND_CPU_LINEBYLINE]):
             mode = Mode.RPC_AND_CPU_INSTRUMENTED
 
@@ -112,13 +114,22 @@ class Mode(object):
         return mode in [
                 Mode.RPC_ONLY,
                 Mode.RPC_AND_CPU_INSTRUMENTED,
-                Mode.RPC_AND_CPU_SAMPLING]
+                Mode.RPC_AND_CPU_SAMPLING,
+                Mode.RPC_AND_CPU_MEMORY_SAMPLING]
 
     @staticmethod
     def is_sampling_enabled(mode):
         return mode in [
                 Mode.CPU_SAMPLING,
-                Mode.RPC_AND_CPU_SAMPLING]
+                Mode.CPU_MEMORY_SAMPLING,
+                Mode.RPC_AND_CPU_SAMPLING,
+                Mode.RPC_AND_CPU_MEMORY_SAMPLING]
+
+    @staticmethod
+    def is_memory_sampling_enabled(mode):
+        return mode in [
+                Mode.CPU_MEMORY_SAMPLING,
+                Mode.RPC_AND_CPU_MEMORY_SAMPLING]
 
     @staticmethod
     def is_instrumented_enabled(mode):
@@ -218,7 +229,7 @@ class RequestLogHandler(RequestHandler):
 
         # Log fetching doesn't work on the dev server and this data isn't
         # relevant in dev server's case, so we return a simple fake response.
-        if dev_server:
+        if util.dev_server:
             dict_request_log = {
                 "pending_ms": 0,
                 "loading_request": False,
@@ -430,7 +441,11 @@ class RequestProfiler(object):
                 # this file so we don't bring in a lot of imports for users who
                 # don't have the profiler enabled.
                 from . import sampling_profiler
-                self.sampling_prof = sampling_profiler.Profile()
+                if Mode.is_memory_sampling_enabled(self.mode):
+                    self.sampling_prof = sampling_profiler.Profile(
+                        memory_sample_rate=5)
+                else:
+                    self.sampling_prof = sampling_profiler.Profile()
                 result_fxn_wrapper = self.sampling_prof.run
 
             elif Mode.is_linebyline_enabled(self.mode):

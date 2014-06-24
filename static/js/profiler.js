@@ -9,10 +9,12 @@ var GaeMiniProfiler = {
                SIMPLE: "simple",
                CPU_INSTRUMENTED: "instrumented",
                CPU_SAMPLING: "sampling",
+               CPU_MEMORY_SAMPLING: "memory_sampling",
                CPU_LINEBYLINE: "linebyline",
                RPC_ONLY: "rpc",
                RPC_AND_CPU_INSTRUMENTED: "rpc_instrumented",
                RPC_AND_CPU_SAMPLING: "rpc_sampling",
+               RPC_AND_CPU_MEMORY_SAMPLING: "rpc_memory_sampling",
                RPC_AND_CPU_LINEBYLINE: "rpc_linebyline"
     },
 
@@ -86,7 +88,8 @@ var GaeMiniProfiler = {
     isRpcEnabled: function(mode) {
         return (mode == this.modes.RPC_ONLY ||
                 mode == this.modes.RPC_AND_CPU_INSTRUMENTED ||
-                mode == this.modes.RPC_AND_CPU_SAMPLING);
+                mode == this.modes.RPC_AND_CPU_SAMPLING ||
+                mode == this.modes.RPC_AND_CPU_MEMORY_SAMPLING);
     },
 
     /**
@@ -102,7 +105,17 @@ var GaeMiniProfiler = {
      */
     isSamplingEnabled: function(mode) {
         return (mode == this.modes.CPU_SAMPLING ||
-                mode == this.modes.RPC_AND_CPU_SAMPLING);
+                mode == this.modes.CPU_MEMORY_SAMPLING ||
+                mode == this.modes.RPC_AND_CPU_SAMPLING ||
+                mode == this.modes.RPC_AND_CPU_MEMORY_SAMPLING);
+    },
+
+    /**
+     * True if profiler mode has enabled memory sampling
+     */
+    isMemorySamplingEnabled: function(mode) {
+        return (mode == this.modes.CPU_MEMORY_SAMPLING ||
+                mode == this.modes.RPC_AND_CPU_MEMORY_SAMPLING);
     },
 
     /**
@@ -439,6 +452,8 @@ var GaeMiniProfiler = {
         var jSlider = searchRoot.find(".sample-number-slider");
         var jTable = searchRoot.find(".sample-table");
         var jSampleTimestamp = searchRoot.find(".sample-timestamp");
+        var jSampleMemory = searchRoot.find(".sample-memory");
+        var jSampleMemoryIncrease = searchRoot.find(".sample-memory-increase");
         var jIgnoreFramesInput = searchRoot.find(".ignore-frames-slider");
         var jIgnoredFrames = searchRoot.find(".sample-num-frames-ignored");
         var jTableBody = jTable.find("tbody");
@@ -453,6 +468,35 @@ var GaeMiniProfiler = {
 
         jSampleTimestamp.html(samples[sampleIndex].timestamp_ms + "ms");
         jIgnoredFrames.html(minFrameToDisplay);
+
+        if (jSampleMemory) {
+            if (samples[sampleIndex].memory_used) {
+                var memoryIndex = sampleIndex;
+                var sampledAt = "";
+            } else {
+                var memoryIndex = samples[sampleIndex].prev_memory_sample_index;
+                var sampledAt = ("last sampled at " +
+                                 samples[memoryIndex].timestamp_ms + "ms");
+            }
+
+            var memoryUsed = samples[memoryIndex].memory_used
+            jSampleMemory.html(Math.round(memoryUsed * 100) / 100 + " MB");
+            if (memoryIndex > 0) {
+                var prevIndex = samples[memoryIndex].prev_memory_sample_index;
+                var diff = memoryUsed - samples[prevIndex].memory_used;
+                diff = Math.round(diff * 100) / 100;
+                if (diff >= 0) {
+                    diff = "+" + diff;
+                }
+                sampledAt = ", " + sampledAt
+                jSampleMemoryIncrease.html(
+                        "(" + diff + " MB" + sampledAt + ")");
+            } else if (sampledAt) {
+                jSampleMemoryIncrease.html("(" + sampledAt + ")");
+            } else {
+                jSampleMemoryIncrease.html("");
+            }
+        }
 
         GaeMiniProfiler.buildSampleTable(jTable,
                 samples[sampleIndex].stack_frames, frameNames,

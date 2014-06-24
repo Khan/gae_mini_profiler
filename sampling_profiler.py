@@ -26,6 +26,31 @@ import threading
 
 from . import util
 
+
+def get_memory():
+    if util.dev_server:
+        try:
+            # This will work in a dev shell, but will raise an error on
+            # a dev server.  We convert to MB for consistency with prod.
+            #
+            # TODO(benkraft): Hack the dev server to allow the import.
+            # It prohibits any import that wouldn't be allowed on prod,
+            # but here we would actually like to be able to do the
+            # import anyway, since we already do things differently on
+            # prod.
+            #
+            # TODO(benkraft): Craig thinks the live runtime API is
+            # actually reporting VSS, not RSS, so maybe we should use
+            # that for consistency.  Better yet, use both.
+            import resource
+            return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.
+        except:
+            return 0
+    else:
+        # This will work anywhere, but will return 0 on dev.  It involves an RPC.
+        return runtime.memory_usage().current()
+
+
 class InspectingThread(threading.Thread):
     """Thread that periodically triggers profiler inspections."""
     SAMPLES_PER_SECOND = 250
@@ -57,11 +82,13 @@ class InspectingThread(threading.Thread):
         end, but the samples may not be perfectly even."""
 
         next_sample_time_seconds = time.time()
+        sample_number = 0
 
         # Keep sampling until this thread is explicitly stopped.
         while not self.should_stop():
             # Take a sample of the main request thread's frame stack...
-            self.profile.take_sample()
+            self.profile.take_sample(sample_number)
+            sample_number += 1
 
             # ...then sleep and let it do some more work.
             next_sample_time_seconds += (
@@ -104,10 +131,28 @@ class ProfileSample(object):
 
 
 class Profile(object):
-    """Profiler that periodically inspects a request and logs stack traces."""
-    def __init__(self):
+    """Profiler that periodically inspects a request and logs stack traces.
+
+    If memory_sample_rate is nonzero, approximately that many samples per
+    second will also profile current memory usage.  Note that on prod, this
+    involves an RPC, so running more than 5 or 10 samples per second is not
+    recommended.
+    """
+    def __init__(self, memory_sample_rate=0):
+        # Every self.memory_sample_every'th sample will also record memory.  We
+        # want this to be such that this will add up to memory_sample_rate
+        # samples per second (approximately).
+        if memory_sample_rate:
+            self.memory_sample_every = max(1, int(round(
+                InspectingThread.SAMPLES_PER_SECOND / memory_sample_rate)))
+        else:
+            self.memory_sample_every = 0
+
         # All saved stack trace samples
         self.samples = []
+
+        # All saved memory samples in MB, by timestamp_ms
+        self.memory_samples = {}
 
         # Thread id for the request thread currently being profiled
         self.current_request_thread_id = None
@@ -137,9 +182,19 @@ class Profile(object):
 
         samples = [{
                 "timestamp_ms": util.milliseconds_fmt(sample.timestamp_ms, 1),
+                "memory_used": self.memory_samples.get(sample.timestamp_ms),
                 "stack_frames": [frame_indexes[desc]
                                  for desc in sample.get_frame_descriptions()]
             } for sample in self.samples]
+
+        # For convenience, we also send along with each sample the index
+        # of the previous memory sample.
+        if self.memory_sample_every:
+            prev_memory_sample_index = 0
+            for i, sample in enumerate(samples):
+                sample['prev_memory_sample_index'] = prev_memory_sample_index
+                if sample['memory_used'] is not None:
+                    prev_memory_sample_index = i
 
         return {
                 "frame_names": [
@@ -148,7 +203,8 @@ class Profile(object):
                 "total_samples": total_samples,
             }
 
-    def take_sample(self):
+    def take_sample(self, sample_number):
+        timestamp_ms = (time.time() - self.start_time) * 1000
         # Look at stacks of all existing threads...
         # See http://bzimmer.ziclix.com/2008/12/17/python-thread-dumps/
         for thread_id, active_frame in sys._current_frames().items():
@@ -158,9 +214,11 @@ class Profile(object):
             # profile more than one of them.
             if thread_id == self.current_request_thread_id:
                 # Grab a sample of this thread's current stack
-                timestamp_ms = (time.time() - self.start_time) * 1000
                 self.samples.append(ProfileSample.from_frame_and_timestamp(
                         active_frame, timestamp_ms))
+        if self.memory_sample_every:
+            if sample_number % self.memory_sample_every == 0:
+                self.memory_samples[timestamp_ms] = get_memory()
 
     def run(self, fxn):
         """Run function with samping profiler enabled, saving results."""
