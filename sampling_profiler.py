@@ -23,6 +23,7 @@ import logging
 import sys
 import time
 import threading
+from google.appengine.api import runtime
 
 from . import util
 
