@@ -189,13 +189,11 @@ class Profile(object):
             } for sample in self.samples]
 
         # For convenience, we also send along with each sample the index
-        # of the previous memory sample.
+        # of the previous and next memory samples.
         if self.memory_sample_every:
-            prev_memory_sample_index = 0
-            for i, sample in enumerate(samples):
-                sample['prev_memory_sample_index'] = prev_memory_sample_index
-                if sample['memory_used'] is not None:
-                    prev_memory_sample_index = i
+            Profile.annotate_prev_samples(samples, 'prev_memory_sample_index')
+            Profile.annotate_prev_samples(samples, 'next_memory_sample_index',
+                                          rev=True)
 
         return {
                 "frame_names": [
@@ -203,6 +201,26 @@ class Profile(object):
                 "samples": samples,
                 "total_samples": total_samples,
             }
+
+    @staticmethod
+    def annotate_prev_samples(samples, key, rev=False):
+        """Annotate samples with the index of the previous/next memory sample.
+
+        For each sample in samples, if there is a previous memory sample, put
+        the index of the most recent one in samples[key].  If rev, instead use
+        the next one.
+        """
+        if not rev:
+            iterator = enumerate(samples)
+        else:
+            # Apparently Python can't reverse an enumerate iterator directly.
+            iterator = reversed(list(enumerate(samples)))
+        prev_index = None
+        for i, sample in iterator:
+            if prev_index is not None:
+                sample[key] = prev_index
+            if sample['memory_used'] is not None:
+                prev_index = i
 
     def take_sample(self, sample_number):
         timestamp_ms = (time.time() - self.start_time) * 1000

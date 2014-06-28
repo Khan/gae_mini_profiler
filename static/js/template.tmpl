@@ -182,11 +182,20 @@
                 </span>
             </div>
             {{if GaeMiniProfiler.isMemorySamplingEnabled(mode)}}
-                <div>
-                    <span class="sample-memory-display">
-                        <b>Memory:</b>
-                        <span class="sample-memory"></span>
-                        <span class="sample-memory-increase"></span>
+                <div class="sample-memory-display">
+                    <span class="sample-memory-line">
+                        <b>Previous memory sample:</b>
+                        <span class="sample-memory-prev"></span>
+                    </span>
+                    <br/>
+                    <span class="sample-memory-line">
+                        <b>Next memory sample:</b>
+                        <span class="sample-memory-next"></span>
+                    </span>
+                    <br/>
+                    <span class="sample-memory-line">
+                        <b>Change:</b>
+                        <span class="sample-memory-diff"></span>
                     </span>
                 </div>
             {{/if}}
