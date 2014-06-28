@@ -443,7 +443,7 @@ class RequestProfiler(object):
                 from . import sampling_profiler
                 if Mode.is_memory_sampling_enabled(self.mode):
                     self.sampling_prof = sampling_profiler.Profile(
-                        memory_sample_rate=5)
+                        memory_sample_rate=25)
                 else:
                     self.sampling_prof = sampling_profiler.Profile()
                 result_fxn_wrapper = self.sampling_prof.run
