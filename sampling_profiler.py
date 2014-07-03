@@ -18,7 +18,7 @@ routines take a reasonable amount of time.)  It is better suited for answering
 the question, "Where is the time spent by my app?"
 """
 
-from collections import defaultdict
+import collections
 import logging
 import sys
 import time
@@ -98,6 +98,9 @@ class InspectingThread(threading.Thread):
             if seconds_to_sleep > 0:
                 time.sleep(seconds_to_sleep)
 
+        # Always take a sample at the end.
+        self.profile.take_sample(sample_number, force_memory=True)
+
 
 class ProfileSample(object):
     """Single stack trace sample gathered during a periodic inspection."""
@@ -153,7 +156,7 @@ class Profile(object):
         self.samples = []
 
         # All saved memory samples in MB, by timestamp_ms
-        self.memory_samples = {}
+        self.memory_samples = collections.OrderedDict()
 
         # Thread id for the request thread currently being profiled
         self.current_request_thread_id = None
@@ -165,7 +168,7 @@ class Profile(object):
 
     def results(self):
         """Return sampling results in a dictionary for template context."""
-        aggregated_calls = defaultdict(int)
+        aggregated_calls = collections.defaultdict(int)
         total_samples = len(self.samples)
 
         # Compress the results by keeping an array of all of the frame
@@ -200,6 +203,11 @@ class Profile(object):
                     util.short_method_fmt(frame) for frame in frames],
                 "samples": samples,
                 "total_samples": total_samples,
+                # We always take a memory sample at the end, so the following
+                # are safe.
+                "start_memory": round(self.memory_samples.values()[0], 2),
+                "max_memory": round(max(self.memory_samples.values()), 2),
+                "end_memory": round(self.memory_samples.values()[-1], 2),
             }
 
     @staticmethod
@@ -222,7 +230,7 @@ class Profile(object):
             if sample['memory_used'] is not None:
                 prev_index = i
 
-    def take_sample(self, sample_number):
+    def take_sample(self, sample_number, force_memory=False):
         timestamp_ms = (time.time() - self.start_time) * 1000
         # Look at stacks of all existing threads...
         # See http://bzimmer.ziclix.com/2008/12/17/python-thread-dumps/
@@ -236,7 +244,7 @@ class Profile(object):
                 self.samples.append(ProfileSample.from_frame_and_timestamp(
                         active_frame, timestamp_ms))
         if self.memory_sample_every:
-            if sample_number % self.memory_sample_every == 0:
+            if force_memory or sample_number % self.memory_sample_every == 0:
                 self.memory_samples[timestamp_ms] = get_memory()
 
     def run(self, fxn):

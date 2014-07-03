@@ -36,6 +36,13 @@
         <div class="title">
             <div class="header">
                 ${profiler_results.total_time} <span class="ms">ms</span>: <span class="url" title="${url}">${url}</span>
+                {{if GaeMiniProfiler.isMemorySamplingEnabled(mode)}}
+                    <br/>
+                    Memory:
+                    ${profiler_results.start_memory} MB (start),
+                    ${profiler_results.max_memory} MB (max),
+                    ${profiler_results.end_memory} MB (end)
+                {{/if}}
             </div>
         </div>
 
