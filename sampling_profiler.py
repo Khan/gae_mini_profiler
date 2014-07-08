@@ -198,17 +198,21 @@ class Profile(object):
             Profile.annotate_prev_samples(samples, 'next_memory_sample_index',
                                           rev=True)
 
-        return {
+        results = {
                 "frame_names": [
                     util.short_method_fmt(frame) for frame in frames],
                 "samples": samples,
                 "total_samples": total_samples,
-                # We always take a memory sample at the end, so the following
-                # are safe.
+            }
+
+        if self.memory_sample_every and self.memory_samples:
+            results.update({
                 "start_memory": round(self.memory_samples.values()[0], 2),
                 "max_memory": round(max(self.memory_samples.values()), 2),
                 "end_memory": round(self.memory_samples.values()[-1], 2),
-            }
+            })
+
+        return results
 
     @staticmethod
     def annotate_prev_samples(samples, key, rev=False):
