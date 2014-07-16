@@ -90,7 +90,7 @@
     color: #eee;
 }
 
-.g-m-p-corner .likely-duplicates {
+.g-m-p-corner .warning-icon {
     background: #bbb;
     border-radius: 6px;
     bottom: 1px;
@@ -100,12 +100,17 @@
     position: relative;
 }
 
-.g-m-p-corner .slow .likely-duplicates {
+.g-m-p-corner .slow .warning-icon {
     background: #bb0;
 }
 
-.g-m-p-corner .very-slow .likely-duplicates {
+.g-m-p-corner .very-slow .warning-icon {
     background: #500;
+    color: #fff;
+}
+
+.g-m-p-corner .warning-icon.very-high-memory {
+    background: #e3b;
     color: #fff;
 }
 

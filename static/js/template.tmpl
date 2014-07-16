@@ -7,7 +7,14 @@
         <div class="entry-icons">
             {{if temporary_redirect}}&#8623;{{/if}}
             {{if appstats_results.likely_dupes}}
-                <span class="likely-duplicates" title="Duplicate RPCs">D</span>
+                <span class="warning-icon likely-duplicates" title="Duplicate RPCs">D</span>
+            {{/if}}
+            {{if GaeMiniProfiler.isMemorySamplingEnabled(mode)}}
+                {{if profiler_results.end_memory - profiler_results.start_memory > 10 }}
+                    <span class="warning-icon very-high-memory" title="Very high memory request">M</span>
+                {{else profiler_results.end_memory - profiler_results.start_memory > 1 }}
+                    <span class="warning-icon high-memory" title="High memory request">M</span>
+                {{/if}}
             {{/if}}
         </div>
         <div class="total-time">
