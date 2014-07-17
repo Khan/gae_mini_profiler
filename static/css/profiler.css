@@ -1,4 +1,5 @@
 .g-m-p-corner {
+    position: absolute;
     background: #e7e7e7;
     border-collapse: collapse;
     cursor: pointer;
@@ -115,6 +116,7 @@
 }
 
 .g-m-p {
+    position: fixed;
     background: #fff;
     min-width: 410px;
     padding: 9px;
@@ -138,7 +140,6 @@
 }
 
 .g-m-p, .g-m-p-corner {
-    position: absolute;
     left: 9px;
     top: 0;
 
