@@ -19,6 +19,7 @@ the question, "Where is the time spent by my app?"
 """
 
 import collections
+import json
 import logging
 import sys
 import time
@@ -213,6 +214,118 @@ class Profile(object):
             })
 
         return results
+
+    def cpuprofile_results(self):
+        """Outputs profiling data in a format suitable for display in Chrome.
+
+        They can then be loaded into the Chrome profiler and viewed there.
+
+        The Chrome .cpuprofile format is a JSON object.  It doesn't seem to be
+        documented anywhere, so here's a bit of documentation:
+            The JSON root should be an object with the following keys:
+                * startTime: seconds, with 6 decimals
+                * endTime: likewise
+                * head: a frame
+                * samples: a array of the id of each sample
+                * timestamps: a array of the timestamps of the samples
+                    (optional, will be interpolated if missing, ignored in
+                    Chrome < 36.0)
+
+            Each frame is an object with the following keys:
+                * functionName,
+                * scriptId: a string, which somehow sets the URL, I think based
+                    on the scripts on the current page (optional)
+                * url: a URL (seems to sometimes be ignored for unknown
+                    reasons, optional)
+                * lineNumber: *zero*-indexed (optional)
+                * columnNumber: (optional)
+                * hitCount: ostensibly, the number of samples in which this is
+                    the top frame.  This gets divided by the total hitCount
+                    across the entire profile, and scaled to the total time.
+                * callUID: a number, should be unique
+                * children: an array of frames (can be empty)
+                * deoptReason: a string to be displayed as a reason this isn't
+                    optimized (optional, can be empty)
+                * id: a number, generally in depth-first order
+        """
+        if not self.samples:
+            return "{}"
+        call_tree, sample_ids = Profile._call_tree(self.samples)
+        return json.dumps({
+            "startTime": self.samples[0].timestamp_ms / 1000 + 0.01,
+            "endTime": self.samples[-1].timestamp_ms / 1000,
+            "head": Profile._munge_call_tree(("(root)", "", ""), call_tree),
+            "samples": sample_ids,
+            "timestamps": [sample.timestamp_ms * 1000
+                           for sample in self.samples],
+        })
+
+    @staticmethod
+    def _call_tree(samples):
+        """Build a call tree for sampled stacks.  Used by cpuprofile_results.
+
+        Returns a tuple of the root "frame" dict and a list of the id of each
+        sample.  Each frame is a dict, with keys "total_time" (a number),
+        "children" (a dict of function tuples (filename, line, function) ->
+        frames), and "id" (an integer).
+        """
+        root = {
+            "total_time": 0,
+            "children": {},
+            "id": 1,
+        }
+        next_id = 2
+        last_sample_ms = None
+        sample_ids = []
+        for sample in samples:
+            frame_to_add_to = root
+            for frame in reversed(sample.stack_trace):
+                if frame not in frame_to_add_to["children"]:
+                    # If we haven't seen this frame before, add it.
+                    frame_to_add_to["children"][frame] = {
+                        "total_time": 0,
+                        "children": {},
+                        "id": next_id,
+                    }
+                    next_id += 1
+                frame_to_add_to = frame_to_add_to["children"][frame]
+            # Now frame_to_add_to is the top frame of our stack, so account for
+            # the time spent in this frame in it.
+            if last_sample_ms is None:
+                # Make something up for the first sample, because Chrome thinks
+                # of samples as taking time, and we think of them as points in
+                # time.
+                # TODO(benkraft): do something smarter here.
+                dt = 1000.0 / InspectingThread.SAMPLES_PER_SECOND
+            else:
+                dt = sample.timestamp_ms - last_sample_ms
+            frame_to_add_to["total_time"] += dt
+            last_sample_ms = sample.timestamp_ms
+            sample_ids.append(frame_to_add_to["id"])
+
+        return root, sample_ids
+
+    @staticmethod
+    def _munge_call_tree(current_frame, call_tree):
+        """Munges the call tree in _call_tree for cpuprofile_results.
+
+        "call_tree" should be a node of the call tree returned by _call_tree,
+        with all its children, and current_frame should be the (filename, line,
+        function) tuple of the frame it represents.
+        """
+        return {
+            # Include the path in functionName since "url" doesn't really
+            # appear to work.
+            "functionName": "{2} [{0}:{1}]".format(*current_frame),
+            "hitCount": call_tree["total_time"],
+            # It's unclear what callUID is used for, but the ids will be
+            # distinct, so we might as well use them for this too.
+            "callUID": call_tree["id"],
+            "id": call_tree["id"],
+            "children": [
+                Profile._munge_call_tree(frame, child_tree)
+                for frame, child_tree in call_tree["children"].iteritems()],
+        }
 
     @staticmethod
     def annotate_prev_samples(samples, key, rev=False):
