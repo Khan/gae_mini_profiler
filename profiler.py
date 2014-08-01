@@ -191,6 +191,31 @@ class SharedStatsHandler(RequestHandler):
         self.response.out.write(template)
 
 
+class CpuProfileStatsHandler(RequestHandler):
+    """Handler for retrieving the (sampling) profile in .cpuprofile format.
+
+    This is compatible with Chrome's flamechart profile viewer.
+    """
+    def get(self):
+        request_id = self.request.get("request_id")
+        request_stats = RequestStats.get(request_id)
+
+        if not request_stats:
+            self.response.out.write(
+                "Profiler stats no longer exist for this request.")
+            return
+
+        if not 'cpuprofile' in request_stats.profiler_results:
+            self.response.out.write(
+                "No .cpuprofile available for this profile")
+            return
+
+        self.response.headers['Content-Disposition'] = (
+                'attachment; filename="g-m-p-%s.cpuprofile"' % str(request_id))
+        self.response.headers['Content-type'] = "application/json"
+        self.response.out.write(request_stats.profiler_results['cpuprofile'])
+
+
 class RequestLogHandler(RequestHandler):
     """Handler for retrieving and returning a RequestLog from GAE's logs API.
 
@@ -364,6 +389,7 @@ class RequestProfiler(object):
             results.update(self.instrumented_prof.results())
         elif self.sampling_prof:
             results.update(self.sampling_prof.results())
+            results["cpuprofile"] = self.sampling_prof.cpuprofile_results()
         elif self.linebyline_prof:
             results.update(self.linebyline_prof.results())
 
