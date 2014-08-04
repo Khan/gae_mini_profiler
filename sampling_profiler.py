@@ -57,10 +57,11 @@ class InspectingThread(threading.Thread):
     """Thread that periodically triggers profiler inspections."""
     SAMPLES_PER_SECOND = 250
 
-    def __init__(self, profile=None):
+    def __init__(self, profile=None, time_fxn=time.time):
         super(InspectingThread, self).__init__()
         self._stop_event = threading.Event()
         self.profile = profile
+        self.time_fxn = time_fxn
 
     def stop(self):
         """Signal the thread to stop and block until it is finished."""
@@ -83,7 +84,7 @@ class InspectingThread(threading.Thread):
         faster to catch up, so we'll get the right number of samples in the
         end, but the samples may not be perfectly even."""
 
-        next_sample_time_seconds = time.time()
+        next_sample_time_seconds = self.time_fxn()
         sample_number = 0
 
         # Keep sampling until this thread is explicitly stopped.
@@ -95,7 +96,8 @@ class InspectingThread(threading.Thread):
             # ...then sleep and let it do some more work.
             next_sample_time_seconds += (
                 1.0 / InspectingThread.SAMPLES_PER_SECOND)
-            seconds_to_sleep = next_sample_time_seconds - time.time()
+            seconds_to_sleep = (
+                next_sample_time_seconds - self.time_fxn())
             if seconds_to_sleep > 0:
                 time.sleep(seconds_to_sleep)
 
@@ -142,8 +144,11 @@ class Profile(object):
     second will also profile current memory usage.  Note that on prod, this
     involves an RPC, so running more than 5 or 10 samples per second is not
     recommended.
+
+    If time_fxn is provided, it will be used instead of time.time().  This is
+    useful, for example, if time.time() has been mocked out in tests.
     """
-    def __init__(self, memory_sample_rate=0):
+    def __init__(self, memory_sample_rate=0, time_fxn=time.time):
         # Every self.memory_sample_every'th sample will also record memory.  We
         # want this to be such that this will add up to memory_sample_rate
         # samples per second (approximately).
@@ -165,7 +170,8 @@ class Profile(object):
         # Thread that constantly waits, inspects, waits, inspect, ...
         self.inspecting_thread = None
 
-        self.start_time = time.time()
+        self.time_fxn = time_fxn
+        self.start_time = time_fxn()
 
     def results(self):
         """Return sampling results in a dictionary for template context."""
@@ -348,7 +354,7 @@ class Profile(object):
                 prev_index = i
 
     def take_sample(self, sample_number, force_memory=False):
-        timestamp_ms = (time.time() - self.start_time) * 1000
+        timestamp_ms = (self.time_fxn() - self.start_time) * 1000
         # Look at stacks of all existing threads...
         # See http://bzimmer.ziclix.com/2008/12/17/python-thread-dumps/
         for thread_id, active_frame in sys._current_frames().items():
@@ -364,28 +370,35 @@ class Profile(object):
             if force_memory or sample_number % self.memory_sample_every == 0:
                 self.memory_samples[timestamp_ms] = get_memory()
 
-    def run(self, fxn):
-        """Run function with samping profiler enabled, saving results."""
-
+    def start(self):
+        """Start profiling."""
         if not hasattr(threading, "current_thread"):
             # Sampling profiler is not supported in Python2.5
             logging.warn("The sampling profiler is not supported in Python2.5")
-            return fxn()
+        else:
+            # Store the thread id for the current request's thread. This lets
+            # the inspecting thread know which thread to inspect.
+            self.current_request_thread_id = threading.current_thread().ident
 
-        # Store the thread id for the current request's thread. This lets
-        # the inspecting thread know which thread to inspect.
-        self.current_request_thread_id = threading.current_thread().ident
+            # Start the thread that will be periodically inspecting the frame
+            # stack of this current request thread
+            self.inspecting_thread = InspectingThread(profile=self,
+                                                      time_fxn=self.time_fxn)
+            self.inspecting_thread.start()
 
-        # Start the thread that will be periodically inspecting the frame
-        # stack of this current request thread
-        self.inspecting_thread = InspectingThread(profile=self)
-        self.inspecting_thread.start()
+    def stop(self):
+        """Stop profiling."""
+        if hasattr(self, 'inspecting_thread') and self.inspecting_thread:
+            # Stop and clear the inspecting thread
+            self.inspecting_thread.stop()
+            self.inspecting_thread = None
 
+    def run(self, fxn):
+        """Run function with samping profiler enabled, saving results."""
+        self.start()
         try:
             # Run the request fxn which will be inspected by the inspecting
             # thread.
             return fxn()
         finally:
-            # Stop and clear the inspecting thread
-            self.inspecting_thread.stop()
-            self.inspecting_thread = None
+            self.stop()
