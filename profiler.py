@@ -358,6 +358,17 @@ class RequestStats(object):
         return "__gae_mini_profiler_request_%s" % request_id
 
 
+class ThreadFilter(logging.Filter):
+    "A logging filter that only allows records from the creating thread."""
+
+    def __init__(self, *args, **kwargs):
+        super(ThreadFilter, self).__init__(*args, **kwargs)
+        self.currentThreadIdent = threading.current_thread().ident
+
+    def filter(self, _):
+        return self.currentThreadIdent == threading.current_thread().ident
+
+
 class RequestProfiler(object):
     """Profile a single request."""
 
@@ -369,7 +380,6 @@ class RequestProfiler(object):
         self.linebyline_prof = None
         self.appstats_prof = None
         self.temporary_redirect = False
-        self.handler = None
         self.logs = None
         self.logging_request_id = self.get_logging_request_id()
         self.start = None
@@ -442,7 +452,8 @@ class RequestProfiler(object):
         else:
 
             # Add logging handler
-            self.add_handler()
+            handler = RequestProfiler.create_handler()
+            logging.getLogger().addHandler(handler)
 
             if Mode.is_rpc_enabled(self.mode):
                 # Turn on AppStats monitoring for this request
@@ -504,10 +515,9 @@ class RequestProfiler(object):
                 for value in result:
                     yield value
 
-            self.logs = self.get_logs(self.handler)
-            logging.getLogger().removeHandler(self.handler)
-            self.handler.stream.close()
-            self.handler = None
+            logging.getLogger().removeHandler(handler)
+            self.logs = self.get_logs(handler)
+            handler.stream.close()
 
         self.end = time.time()
 
@@ -523,11 +533,6 @@ class RequestProfiler(object):
         """
         return os.environ.get("REQUEST_LOG_ID", None)
 
-    def add_handler(self):
-        if self.handler is None:
-            self.handler = RequestProfiler.create_handler()
-        logging.getLogger().addHandler(self.handler)
-
     @staticmethod
     def create_handler():
         handler = logging.StreamHandler(StringIO.StringIO())
@@ -541,6 +546,7 @@ class RequestProfiler(object):
             '%(message)s',
         ]), '%M:%S.')
         handler.setFormatter(formatter)
+        handler.addFilter(ThreadFilter())
         return handler
 
     @staticmethod
