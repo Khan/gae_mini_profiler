@@ -74,7 +74,7 @@ class InspectingThread(threading.Thread):
 
     def run(self):
         """Start periodic profiler inspections.
-        
+
         This will run, periodically inspecting and then sleeping, until
         manually stopped via stop().
 
@@ -125,16 +125,15 @@ class ProfileSample(object):
         frame = active_frame
         while frame is not None:
             code = frame.f_code
-            stack_trace.append(
-                (code.co_filename, frame.f_lineno, code.co_name))
+            stack_trace.append((code, frame.f_lineno))
             frame = frame.f_back
 
         return ProfileSample(stack_trace, timestamp_ms)
 
     def get_frame_descriptions(self):
         """Gets a list of text descriptions, one for each frame, in order."""
-        return ["%s:%s (%s)" % file_line_func
-                for file_line_func in self.stack_trace]
+        return ["%s:%s (%s)" % (code.co_filename, lineno, code.co_name)
+                for code, lineno in self.stack_trace]
 
 
 class Profile(object):
@@ -175,7 +174,6 @@ class Profile(object):
 
     def results(self):
         """Return sampling results in a dictionary for template context."""
-        aggregated_calls = collections.defaultdict(int)
         total_samples = len(self.samples)
 
         # Compress the results by keeping an array of all of the frame
@@ -243,12 +241,12 @@ class Profile(object):
                     on the scripts on the current page (optional)
                 * url: a URL (seems to sometimes be ignored for unknown
                     reasons, optional)
-                * lineNumber: *zero*-indexed (optional)
+                * lineNumber: first line of function (optional)
                 * columnNumber: (optional)
                 * hitCount: ostensibly, the number of samples in which this is
                     the top frame.  This gets divided by the total hitCount
                     across the entire profile, and scaled to the total time.
-                * callUID: a number, should be unique
+                * callUID: a unique ID for the function
                 * children: an array of frames (can be empty)
                 * deoptReason: a string to be displayed as a reason this isn't
                     optimized (optional, can be empty)
@@ -260,7 +258,7 @@ class Profile(object):
         return json.dumps({
             "startTime": self.samples[0].timestamp_ms / 1000 + 0.01,
             "endTime": self.samples[-1].timestamp_ms / 1000,
-            "head": Profile._munge_call_tree(("(root)", "", ""), call_tree),
+            "head": Profile._munge_call_tree(None, call_tree),
             "samples": sample_ids,
             "timestamps": [sample.timestamp_ms * 1000
                            for sample in self.samples],
@@ -319,14 +317,27 @@ class Profile(object):
         with all its children, and current_frame should be the (filename, line,
         function) tuple of the frame it represents.
         """
+        if current_frame is None:
+            call_uid = 0
+            name = '(root)'
+            url = ''
+            lineno = 0
+        else:
+            code, _ = current_frame
+            # (We're assuming that each function has a single shared code
+            # object; we could also hash the function and file names to achieve
+            # a similar effect.)
+            call_uid = id(code)
+            name = code.co_name
+            url = "file://%s" % code.co_filename
+            lineno = code.co_firstlineno
+
         return {
-            # Include the path in functionName since "url" doesn't really
-            # appear to work.
-            "functionName": "{2} [{0}:{1}]".format(*current_frame),
+            "functionName": name,
+            "url": url,
+            "lineNumber": lineno,
             "hitCount": call_tree["total_time"],
-            # It's unclear what callUID is used for, but the ids will be
-            # distinct, so we might as well use them for this too.
-            "callUID": call_tree["id"],
+            "callUID": call_uid,
             "id": call_tree["id"],
             "children": [
                 Profile._munge_call_tree(frame, child_tree)
