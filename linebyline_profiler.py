@@ -11,12 +11,12 @@ import os
 import re
 import sys
 
-_is_dev_server = os.environ["SERVER_SOFTWARE"].startswith("Devel")
+import util
 
 # We can't use LineProfiler in production because it requires a C-extension,
 # but we can monkey-patch it in here for use on the dev server:
-if _is_dev_server:
-    if os.environ["SERVER_SOFTWARE"] == "Development/2.0":
+if util.dev_server:
+    if os.environ.get("SERVER_SOFTWARE") == "Development/2.0":
         from google.appengine.tools.devappserver2.python import sandbox
         for meta in sys.meta_path:
             if isinstance(meta, sandbox.PathRestrictingImportHook):
@@ -157,7 +157,7 @@ class Profile(object):
     def results(self):
         err_msg = ""
 
-        if not _is_dev_server:
+        if not util.dev_server:
             err_msg = "The line-by-line profiler can only be used in dev."
         elif line_profiler is None:
             err_msg = (

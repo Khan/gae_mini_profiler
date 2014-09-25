@@ -35,7 +35,7 @@ import util
 
 class CurrentRequestId(object):
     """A per-request identifier accessed by other pieces of mini profiler.
-    
+
     It is managed as part of the middleware lifecycle."""
 
     # In production use threading.local() to make request ids threadsafe
@@ -62,11 +62,11 @@ class CurrentRequestId(object):
 
 class Mode(object):
     """Possible profiler modes.
-    
+
     TODO(kamens): switch this from an enum to a more sensible bitmask or other
     alternative that supports multiple settings without an exploding number of
     enums.
-    
+
     TODO(kamens): when this is changed from an enum to a bitmask or other more
     sensible object with multiple properties, we should pass a Mode object
     around the rest of this code instead of using a simple string that this
@@ -222,7 +222,7 @@ class RequestLogHandler(RequestHandler):
     """Handler for retrieving and returning a RequestLog from GAE's logs API.
 
     See https://developers.google.com/appengine/docs/python/logs.
-    
+
     This GET request accepts a logging_request_id via query param that matches
     the request_id from an App Engine RequestLog.
 
@@ -389,7 +389,7 @@ class RequestProfiler(object):
 
     def profiler_results(self):
         """Return the CPU profiler results for this request, if any.
-        
+
         This will return a dictionary containing results for either the
         sampling profiler, instrumented profiler results, or a simple
         start/stop timer if both profilers are disabled."""
@@ -528,7 +528,7 @@ class RequestProfiler(object):
 
     def get_logging_request_id(self):
         """Return the identifier for this request used by GAE's logservice.
-        
+
         This logging_request_id will match the request_id parameter of a
         RequestLog object stored in App Engine's logging API:
         https://developers.google.com/appengine/docs/python/logs/
@@ -618,7 +618,7 @@ class ProfilerWSGIMiddleware(object):
             old_memcache_add = memcache.add
             old_memcache_delete = memcache.delete
             memcache.add = (lambda key, *args, **kwargs:
-                                (True if key == recording.lock_key() 
+                                (True if key == recording.lock_key()
                                  else old_memcache_add(key, *args, **kwargs)))
             memcache.delete = (lambda key, *args, **kwargs:
                                    (True if key == recording.lock_key()

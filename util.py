@@ -1,6 +1,8 @@
 import os
 
-dev_server = os.environ["SERVER_SOFTWARE"].startswith("Devel")
+# Assume if SERVER_SOFTWARE is not present in the environment at import time
+# that we are in some kind of testing or development environment.
+dev_server = os.environ.get("SERVER_SOFTWARE", "Devel").startswith("Devel")
 
 def seconds_fmt(f, n=0):
     return milliseconds_fmt(f * 1000, n)

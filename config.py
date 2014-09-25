@@ -2,6 +2,8 @@ import os
 
 from google.appengine.api import lib_config
 
+import util
+
 # These should_profile functions return true whenever a request should be
 # profiled.
 #
@@ -34,7 +36,7 @@ _config = lib_config.register("gae_mini_profiler", {
 
 def should_profile():
     """Returns true if the current request should be profiles."""
-    if os.environ["SERVER_SOFTWARE"].startswith("Devel"):
+    if util.dev_server:
         return _config.should_profile_development()
     else:
         return _config.should_profile_production()
