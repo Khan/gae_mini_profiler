@@ -105,7 +105,7 @@ class Mode(object):
                 Mode.RPC_AND_CPU_SAMPLING,
                 Mode.RPC_AND_CPU_MEMORY_SAMPLING,
                 Mode.RPC_AND_CPU_LINEBYLINE]):
-            mode = Mode.RPC_AND_CPU_INSTRUMENTED
+            mode = Mode.RPC_ONLY
 
         return mode
 

@@ -45,7 +45,7 @@ var GaeMiniProfiler = {
     getCookieMode: function() {
         var mode = $.cookiePlugin("g-m-p-mode");
 
-        // Default to RPC + Instrumented
+        // Default to RPC only
         var valid = false;
         for (var key in this.modes) {
             if (mode == this.modes[key]) {
@@ -54,7 +54,7 @@ var GaeMiniProfiler = {
             }
         }
         if (!valid) {
-            mode = this.modes.RPC_AND_CPU_INSTRUMENTED;
+            mode = this.modes.RPC_ONLY;
         }
 
         return mode;
