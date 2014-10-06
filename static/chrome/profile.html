@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style type="text/css">
+  body {margin:0px;padding:0px;overflow:hidden;height:100%}
+  #devtools {overflow:hidden;height:100%;width:100%}
+</style>
+</head>
+<body>
+<script>
+// From http://stackoverflow.com/questions/901115/how-can-i-get-query-string-values-in-javascript
+function getParameterByName(name) {
+    name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
+    var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
+        results = regex.exec(location.search);
+    return results == null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
+}
+
+function patch(WebInspector) {
+    // This function patches WebInspector classes with a parallel
+    // "fromURL" version of existing "fromFile" methods in order to
+    // work with data loaded from an XHR source. The key patch was to
+    // add "loadFromURL" to CPUProfileHeader, the rest are support.
+    //
+    // The patches are based on branch 2023 / r175193 of chromium SVN:
+    // http://src.chromium.org/viewvc/blink/branches/chromium/2023/Source/devtools/front_end/profiler/CPUProfileView.js?revision=175193
+
+    // Derived from "loadFromFile" with a modification to the XHR reader.
+    WebInspector.CPUProfileHeader.prototype.loadFromURL = function(url) {
+        this.updateStatus(WebInspector.UIString("Loading\u2026"), true);
+        var fileReader = new WebInspector.ChunkedXHRReader(url, this);
+        fileReader.start(this);
+    };
+
+    // Copied verbatim from "createProfileLoadedFromFile".
+    WebInspector.CPUProfileType.prototype.createProfileLoadedFromURL = function(title) {
+        var target = WebInspector.targetManager.activeTarget();
+        return new WebInspector.CPUProfileHeader(target, this, title)
+    };
+
+    // Derived from "loadFromFile" since a URL doesn't have a clear
+    // associated name, we allow passing one in.
+    WebInspector.ProfileType.prototype.loadFromURL = function(url, name) {
+        var profile = this.createProfileLoadedFromURL(name);
+        this.setProfileBeingRecorded(profile);
+        this.addProfile(profile);
+        profile.loadFromURL(url);
+    };
+}
+
+function DevToolsLoaded() {
+  var devTools = document.getElementById("devtools").contentWindow;
+  devTools.InspectorFrontendAPI._runOnceLoaded(function() {
+    var requestId = getParameterByName("request_id");
+    var profileName = "gmp-" + requestId;
+
+    document.title = profileName;
+
+    // Hide the top-level toolbar (Timeline, Profile, etc.) in DevTools.
+    devTools.document.querySelector(".tabbed-pane .toolbar").style.display = "none";
+
+    var profilesPanel = devTools.WebInspector.inspectorView.showPanel("profiles");
+    // The profiles panel must already be loaded for
+    // WebInspector.CPUProfile* to exist before we try to modify the
+    // prototype on those objects.
+    patch(devTools.WebInspector);
+
+    // Default CPU profile to the flame chart view, overrides default in
+    // WebInspector.CPUProfileView constructor.
+    devTools.WebInspector.settings.createSetting("cpuProfilerView",
+        devTools.WebInspector.CPUProfileView._TypeFlame);
+
+    // Kick off profile loading.
+    var cpuProfileType = profilesPanel._findProfileTypeByExtension(".cpuprofile");
+    cpuProfileType.loadFromURL(
+        "/gae_mini_profiler/shared/cpuprofile?request_id=" + requestId,
+        profileName);
+
+    // Switch to the loading profile as soon as it's available and
+    // hide it until then.  It's a little heavy-handed but works well.
+    devTools.document.body.style.visibility = "hidden";
+    var checkInterval = window.setInterval(function() {
+        var cpuProfiles = cpuProfileType.getProfiles();
+        if (cpuProfiles.length) {
+            window.clearInterval(checkInterval);
+            // Remove sidebar area and resizer. This is done after the profile
+            // is loaded or else DevTools raises an error trying to lay out
+            // its UI in JavaScript.
+            devTools.document.querySelector(".split-view-sidebar").style.display = "none";
+            devTools.document.querySelector(".ew-resizer-widget").style.display = "none";
+            devTools.document.body.style.visibility = "visible";
+
+            profilesPanel.showProfile(cpuProfiles[0]);
+        }
+    }, 100);
+  });
+}
+</script>
+<iframe id="devtools" frameborder="0" height="100%" width="100%" src="/gae_mini_profiler/static/chrome/inspector-20140603/devtools.html" onload="DevToolsLoaded();"></iframe>
+</body>
+</html>

@@ -165,14 +165,24 @@
             {{else GaeMiniProfiler.isSamplingEnabled(mode)}}
 
             <div class="sampling-profiler-help">
+                {{if navigator.userAgent.indexOf("Chrome/") !== -1}}
+                <a target="_cpuprofile"
+                   href="/gae_mini_profiler/static/chrome/profile.html?request_id=${encodeURIComponent(request_id)}"
+                   title="View the profile as a flame chart.">
+                    Visualize
+                </a>
+                {{else}}
+                <span title="View the profile as a flame chart.">Visualize in Chrome</span>
+                {{/if}}
+                &mdash;
                 <a
                 href="/gae_mini_profiler/shared/cpuprofile?request_id=${encodeURIComponent(request_id)}"
-                title="Get profile compatible with Google Chrome's flamechart viewer.">
-                    Get .cpuprofile
+                title="Download the .cpuprofile file to load into Google Chrome DevTools' flame chart viewer.">
+                    Download
                 </a> &mdash;
-                How to use the
+                Understanding the
                 <div class="sampling-profiler-help-popup" style="display:inline-block">
-                    <a href="javascript:void()" class="uses_script">sampling profile viewer</a>
+                    <a href="javascript:void()" class="uses_script">sampled profile</a>
                     <div class="sampling-profiler-help-text">
                         Cross-reference with
                         {{if GaeMiniProfiler.isRpcEnabled(mode)}}

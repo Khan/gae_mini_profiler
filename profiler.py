@@ -214,8 +214,13 @@ class CpuProfileStatsHandler(RequestHandler):
             'attachment; filename="gmp-%s-%s.cpuprofile"' %
             (request_stats.start_dt.strftime('%Y%m%d-%H%M%S'),
              str(request_id)))
-        self.response.headers['Content-type'] = "application/json"
-        self.response.out.write(request_stats.profiler_results['cpuprofile'])
+        # Setting content-type to application/json caused Safari (7.1,
+        # at least) to append a .json extension to the existing
+        # .cpuprofile extension so we use an agnostic content-type.
+        self.response.headers['Content-type'] = ("application/octet-stream; "
+                                                 "charset=utf-8")
+        self.response.out.write(
+            request_stats.profiler_results['cpuprofile'].encode("utf-8"))
 
 
 class RequestLogHandler(RequestHandler):
