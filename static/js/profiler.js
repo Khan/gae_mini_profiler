@@ -171,11 +171,29 @@ var GaeMiniProfiler = {
             var jCorner = this.renderCorner(data[ix]);
 
             if (!jCorner.data("attached")) {
+                if ($.cookiePlugin("g-m-p-hidden") === "true") {
+                    jCorner
+                        .children(".g-m-p-corner-toggle.g-m-p-open")
+                        .show();
+
+                    jCorner
+                        .children(".g-m-p-corner-toggle.g-m-p-close")
+                        .hide();
+
+                    jCorner
+                        .children(".g-m-p-corner .entry")
+                        .hide();
+                }
+
                 $(document.body)
                     .append(jCorner)
                     .click(function(e) { return GaeMiniProfiler.collapse(e); });
                 jCorner
                     .data("attached", true);
+
+                jCorner
+                    .children(".g-m-p-corner-toggle")
+                    .click(this.toggleCorner);
             }
 
             if (fShowImmediately)
@@ -238,6 +256,10 @@ var GaeMiniProfiler = {
                     requestLogData));
     },
 
+    /**
+     * Collapses the larger informational tab that shows up after clicking on
+     * one of the entries.
+     */
     collapse: function(e) {
         if ($(".g-m-p").is(":visible")) {
             $(".g-m-p").slideUp("fast");
@@ -416,6 +438,20 @@ var GaeMiniProfiler = {
         return $("#profilerTemplate").tmplPlugin(data);
     },
 
+    toggleCorner: function(elLink) {
+        if ($(elLink.currentTarget).hasClass("g-m-p-open")) {
+            $(".g-m-p-corner-toggle.g-m-p-open").hide();
+            $(".g-m-p-corner-toggle.g-m-p-close").show();
+            $(".g-m-p-corner .entry").show();
+            $.cookiePlugin("g-m-p-hidden", "false", {path: '/', expires: 365});
+        } else {
+            $(".g-m-p-corner-toggle.g-m-p-open").show();
+            $(".g-m-p-corner-toggle.g-m-p-close").hide();
+            $(".g-m-p-corner .entry").hide();
+            $.cookiePlugin("g-m-p-hidden", "true", {path: '/', expires: 365});
+        }
+    },
+
     renderCorner: function(data) {
         if (data && data.profiler_results) {
             var jCorner = $(".g-m-p-corner");
@@ -433,13 +469,19 @@ var GaeMiniProfiler = {
                 perfClass = "slow";
             }
 
-            return jCorner.append(
-                    $("#profilerCornerEntryTemplate")
-                        .tmplPlugin(data)
-                        .addClass(fFirst ? "" : "ajax")
-                        .addClass(perfClass)
-                        .click(function() { GaeMiniProfiler.expand(this, data); return false; })
-                    );
+            var jCornerEntry = $("#profilerCornerEntryTemplate")
+                .tmplPlugin(data)
+                .addClass(fFirst ? "" : "ajax")
+                .addClass(perfClass)
+                .click(function() { GaeMiniProfiler.expand(this, data); return false; });
+
+            // If the open button is visible, we're currently closed.
+            var fShouldHide = $(".g-m-p-corner-toggle.g-m-p-open").is(":visible");
+            if (fShouldHide) {
+                jCornerEntry.hide();
+            }
+
+            return jCorner.append(jCornerEntry);
         }
         return null;
     },

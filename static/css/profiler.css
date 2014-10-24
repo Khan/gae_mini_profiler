@@ -17,9 +17,22 @@
     color: #444;
 }
 
-.g-m-p-corner .entry {  	
+.g-m-p-corner-toggle {
+    font-size: 0.6em;
+}
+
+.g-m-p-corner-toggle.g-m-p-open {
+    margin: 0px;
+    display: none;
+}
+
+.g-m-p-corner-toggle.g-m-p-close {
+    margin: -5px;
+}
+
+.g-m-p-corner .entry {
     display: table-row;
-    height: auto;  	
+    height: auto;
     margin: auto;
     white-space: nowrap;
 }
