@@ -57,11 +57,12 @@ class InspectingThread(threading.Thread):
     """Thread that periodically triggers profiler inspections."""
     SAMPLES_PER_SECOND = 250
 
-    def __init__(self, profile=None, time_fxn=time.time):
+    def __init__(self, profile=None, time_fxn=time.time, sleep_fxn=time.sleep):
         super(InspectingThread, self).__init__()
         self._stop_event = threading.Event()
         self.profile = profile
         self.time_fxn = time_fxn
+        self.sleep_fxn = sleep_fxn
 
     def stop(self):
         """Signal the thread to stop and block until it is finished."""
@@ -99,7 +100,7 @@ class InspectingThread(threading.Thread):
             seconds_to_sleep = (
                 next_sample_time_seconds - self.time_fxn())
             if seconds_to_sleep > 0:
-                time.sleep(seconds_to_sleep)
+                self.sleep_fxn(seconds_to_sleep)
 
         # Always take a sample at the end.
         self.profile.take_sample(sample_number, force_memory=True)
@@ -144,10 +145,12 @@ class Profile(object):
     involves an RPC, so running more than 5 or 10 samples per second is not
     recommended.
 
-    If time_fxn is provided, it will be used instead of time.time().  This is
-    useful, for example, if time.time() has been mocked out in tests.
+    If time_fxn is provided, it will be used instead of time.time(); similarly,
+    sleep_fxn will be used instead of time.sleep().  This is useful, for
+    example, if they have been mocked out in tests.
     """
-    def __init__(self, memory_sample_rate=0, time_fxn=time.time):
+    def __init__(self, memory_sample_rate=0, time_fxn=time.time,
+                 sleep_fxn=time.sleep):
         # Every self.memory_sample_every'th sample will also record memory.  We
         # want this to be such that this will add up to memory_sample_rate
         # samples per second (approximately).
@@ -171,6 +174,7 @@ class Profile(object):
 
         self.time_fxn = time_fxn
         self.start_time = time_fxn()
+        self.sleep_fxn = sleep_fxn
 
     def results(self):
         """Return sampling results in a dictionary for template context."""
@@ -394,7 +398,8 @@ class Profile(object):
             # Start the thread that will be periodically inspecting the frame
             # stack of this current request thread
             self.inspecting_thread = InspectingThread(profile=self,
-                                                      time_fxn=self.time_fxn)
+                                                      time_fxn=self.time_fxn,
+                                                      sleep_fxn=self.sleep_fxn)
             self.inspecting_thread.start()
 
     def stop(self):
