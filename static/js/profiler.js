@@ -36,6 +36,19 @@ var GaeMiniProfiler = {
             }
         });
 
+        var oldFetch = window.fetch;
+        window.fetch = function(input, init) {
+            return oldFetch(input, init).then(function(resp) {
+                var requestId = resp.headers.get('X-MiniProfiler-Id');
+                if (requestId) {
+                    var queryString = resp.headers.get('X-MiniProfiler-QS');
+                    GaeMiniProfiler.fetch(requestId, queryString);
+                }
+
+                return resp;
+            });
+        };
+
         GaeMiniProfiler.fetch(requestId, window.location.search, fShowImmediately);
     },
 
