@@ -33,6 +33,10 @@ import pickle
 import config
 import util
 
+# Use a somewhat smaller size to avoid any chance of off-by-one errors.
+_MEMCACHE_CHUNKSIZE = memcache.MAX_VALUE_SIZE - 1024
+
+
 class CurrentRequestId(object):
     """A per-request identifier accessed by other pieces of mini profiler.
 
@@ -335,34 +339,46 @@ class RequestStats(object):
         self.disabled = False
 
     def store(self):
-        # Store compressed results so we stay under the memcache 1MB limit
+        # Store compressed results to minimize number of chunks.
         pickled = pickle.dumps(self)
         compressed_pickled = zlib.compress(pickled)
-        if len(compressed_pickled) > memcache.MAX_VALUE_SIZE:
-            logging.warning('RequestStats bigger (%d) '
-                + 'than max memcache size (%d), even after compression',
-                len(compressed_pickled), memcache.MAX_VALUE_SIZE)
-            return False
+        setmap = {}
 
-        return memcache.set(RequestStats.memcache_key(self.request_id), compressed_pickled)
+        for i in xrange(0, len(compressed_pickled), _MEMCACHE_CHUNKSIZE):
+            key = RequestStats.memcache_key(self.request_id, i)
+            setmap[key] = compressed_pickled[i:i + _MEMCACHE_CHUNKSIZE]
+        retval = memcache.set_multi(setmap)
+        return not retval      # returns the values where the set failed.
 
     @staticmethod
     def get(request_id):
-        if request_id:
+        if not request_id:
+            return None
 
-            compressed_pickled = memcache.get(RequestStats.memcache_key(request_id))
+        # As long as we get results of size _MEMCACHE_CHUNKSIZE, we assume
+        # there's another chunk.
+        chunks = []
+        i = 0
+        while True:
+            key = RequestStats.memcache_key(request_id, i)
+            chunk = memcache.get(key) or ''
+            chunks.append(chunk)
+            if len(chunk) < _MEMCACHE_CHUNKSIZE:
+                break
+            i += _MEMCACHE_CHUNKSIZE
 
-            if compressed_pickled:
-                pickled = zlib.decompress(compressed_pickled)
-                return pickle.loads(pickled)
+        compressed_pickled = ''.join(chunks)
+        if compressed_pickled:
+            pickled = zlib.decompress(compressed_pickled)
+            return pickle.loads(pickled)
 
         return None
 
     @staticmethod
-    def memcache_key(request_id):
+    def memcache_key(request_id, index):
         if not request_id:
             return None
-        return "__gae_mini_profiler_request_%s" % request_id
+        return "__gae_mini_profiler_request_%s_%s" % (request_id, index)
 
 
 class ThreadFilter(logging.Filter):
