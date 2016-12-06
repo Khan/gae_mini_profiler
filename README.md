@@ -129,7 +129,7 @@ Play around with a demo App Engine applications with gae_mini_profiler enabled a
 
 ## Dependencies
 
-* jQuery must be included somewhere on your page.
+* jQuery >= 1.7 must be included somewhere on your page.
 * (Optional) If you want the fancy slider selector for the Logs output, jQuery UI must also be included with its Slider plugin.
 
 ## Bonus
