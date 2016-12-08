@@ -128,6 +128,16 @@
     color: #fff;
 }
 
+.g-m-p-corner .warning-icon.logged50 {
+    background: #f22;
+    color: #fff;
+}
+
+.g-m-p-corner .warning-icon.logged40 {
+    background: #f90;
+    color: #444;
+}
+
 .g-m-p {
     position: fixed;
     background: #fff;

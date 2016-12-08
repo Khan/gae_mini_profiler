@@ -19,6 +19,11 @@
                     <span class="warning-icon high-memory" title="High memory request">M</span>
                 {{/if}}
             {{/if}}
+            {{if log_count[50]}}
+                <span class="warning-icon logged50" title="Request logged critical errors">C</span>
+            {{else log_count[40]}}
+                <span class="warning-icon logged40" title="Request logged errors">E</span>
+            {{/if}}
         </div>
         <div class="total-time">
             ${profiler_results.total_time} <span class="ms">ms</span>
