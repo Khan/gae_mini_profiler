@@ -1,3 +1,5 @@
+# TODO(colin): fix these lint errors (http://pep8.readthedocs.io/en/release-1.7.x/intro.html#error-codes)
+# pep8-disable:E128,E501
 """CPU profiler that works by collecting line-by-line stats.
 
 This works by storing a list of functions to profile, then telling

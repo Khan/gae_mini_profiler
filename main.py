@@ -1,3 +1,5 @@
+# TODO(colin): fix these lint errors (http://pep8.readthedocs.io/en/release-1.7.x/intro.html#error-codes)
+# pep8-disable:E302
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp.util import run_wsgi_app
 

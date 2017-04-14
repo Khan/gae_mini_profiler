@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# TODO(colin): fix these lint errors (http://pep8.readthedocs.io/en/release-1.7.x/intro.html#error-codes)
+# pep8-disable:E128,E231,E302,E501,W601,W604
 # -*- coding: UTF-8 -*-
 
 import cPickle

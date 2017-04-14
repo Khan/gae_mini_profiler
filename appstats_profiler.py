@@ -1,3 +1,5 @@
+# TODO(colin): fix these lint errors (http://pep8.readthedocs.io/en/release-1.7.x/intro.html#error-codes)
+# pep8-disable:E128,E271,E302,E501,E713
 """RPC profiler that uses appstats to track, time, and log all RPC events.
 
 This is just a simple wrapper for appstats with result formatting. See

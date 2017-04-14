@@ -1,6 +1,7 @@
+# TODO(colin): fix these lint errors (http://pep8.readthedocs.io/en/release-1.7.x/intro.html#error-codes)
+# pep8-disable:E101,E201,E202,E501,W191
 import pprint
 import re
-import sys
 
 
 _STRING = re.compile(r"^\s*(['\"])")
@@ -99,7 +100,6 @@ def unformat(text):
 
 
 def main():
-    from io import StringIO
     f = open('examples.txt', 'r')
     for line in f:
         result = unformat(line.strip())

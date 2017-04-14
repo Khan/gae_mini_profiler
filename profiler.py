@@ -1,3 +1,5 @@
+# TODO(colin): fix these lint errors (http://pep8.readthedocs.io/en/release-1.7.x/intro.html#error-codes)
+# pep8-disable:E116,E127,E129,E251,E261,E302,E501,E713
 from __future__ import with_statement
 
 import datetime
