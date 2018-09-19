@@ -1,5 +1,9 @@
+if (typeof jQuery === "undefined" && typeof require !== "undefined") {
+    jQuery = require("jquery");
+    $ = jQuery;
+};
 
-var GaeMiniProfiler = {
+window.GaeMiniProfiler = {
 
     // Profiler modes match gae_mini_profiler.profiler.Mode's enum.
     // TODO(kamens): switch this from an enum to a more sensible bitmask or
@@ -728,4 +732,8 @@ jQuery.cookiePlugin = function (key, value, options) {
     options = value || {};
     var result, decode = options.raw ? function (s) { return s; } : decodeURIComponent;
     return (result = new RegExp('(?:^|; )' + encodeURIComponent(key) + '=([^;]*)').exec(document.cookie)) ? decode(result[1]) : null;
+};
+
+if (typeof module !== "undefined") {
+    module.exports = GaeMiniProfiler;
 };
