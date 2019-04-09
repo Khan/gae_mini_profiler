@@ -138,7 +138,7 @@ gae_mini_profiler is currently in production use at [Khan Academy](http://khanac
 
 ## FAQ
 
-1. What's the license? [MIT licensed](http://en.wikipedia.org/wiki/MIT_License). There is also code from the Chromium project's DevTools whose license is at `static/chrome/inspector/devtools.html`.
+1. What's the license? [MIT licensed](http://en.wikipedia.org/wiki/MIT_License). There is also code from the Speedscope project whose license is at `static/speedscope/LICENSE`.
 2. I had my `appstats_RECORD_FRACTION` variable set to 0.1, which means only 10% of my queries were getting profiles generated. This meant that most of the time gae_mini_profiler was failing with a javascript error, because the appstats variable was null.
 3. If you are using `appengine_config.py` to customize Appstats behavior you should add this to the top of your `appstats_should_record` method.
 

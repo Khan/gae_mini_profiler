@@ -646,6 +646,16 @@ window.GaeMiniProfiler = {
         }
 
         jTable.trigger("update");
+    },
+
+    speedScopeProfileHref: function(requestId) {
+        var profileAbsoluteUrl = new URL(
+            "/gae_mini_profiler/shared/cpuprofile?request_id=" + requestId,
+            window.location.protocol + "//" + window.location.host + "/");
+        return "/gae_mini_profiler/static/speedscope/index.html#profileURL=" +
+            encodeURIComponent(profileAbsoluteUrl);
+
+
     }
 };
 

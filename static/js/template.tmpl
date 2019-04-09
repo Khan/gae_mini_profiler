@@ -175,7 +175,7 @@
             <div class="sampling-profiler-help">
                 {{if navigator.userAgent.indexOf("Chrome/") !== -1}}
                 <a target="_cpuprofile"
-                   href="/gae_mini_profiler/static/chrome/profile.html?request_id=${encodeURIComponent(request_id)}"
+                   href="${GaeMiniProfiler.speedScopeProfileHref(request_id)}"
                    title="View the profile as a flame chart.">
                     Visualize
                 </a>
