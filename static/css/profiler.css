@@ -376,15 +376,6 @@
 .g-m-p .ll20 { background-color: #3C0; }
 .g-m-p .ll10 { background-color: #09F; }
 
-#slider {
-    padding: 5px 0 3px 0;
-}
-
-#slider .container {
-    width: 150px;
-    display: inline-block;
-}
-
 #slider .minlevel-text {
     display: inline-block;
     width: 4em;
@@ -392,10 +383,6 @@
 
 #slider .loglevel {
     margin-left: .5em;
-}
-
-#slider .ui-slider-horizontal {
-    /*height: .2em;*/
 }
 
 .g-m-p .sampling-profiler-help {

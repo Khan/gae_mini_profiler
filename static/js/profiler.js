@@ -322,6 +322,8 @@ window.GaeMiniProfiler = {
                 .on("input", function() { GaeMiniProfiler.updateSampleNumber(this, data); }).end()
             .find(".ignore-frames-slider")
                 .on("input", function() { GaeMiniProfiler.updateSampleNumber(this, data); }).end()
+            .find(".log-slider")
+                .on("input", function() { GaeMiniProfiler.toggleLogRows(this); }).end()
             .click(function(e) { e.stopPropagation(); })
             .css("left", jCorner.offset().left + jCorner.outerWidth())
             .show();
@@ -331,36 +333,11 @@ window.GaeMiniProfiler = {
             this.updateSampleNumber(jSampleSlider.get(0), data);
         }
 
-        var toggleLogRows = function(level) {
-            var names = {10:'Debug', 20:'Info', 30:'Warning', 40:'Error', 50:'Critical'};
-            $('#slider .minlevel-text').text(names[level]);
-            $('#slider .loglevel').attr('class', 'loglevel ll'+level);
-            for (var i = 10; i<=50; i += 10) {
-                var rows = $('tr.ll'+i);
-                if (i<level)
-                    rows.hide();
-                else
-                    rows.show();
-            }
-        };
-
-        var initLevel = 10;
-
-        if ($('#slider .control').slider) {
-            initLevel = 30;
-            $('#slider .control').slider({
-                value: initLevel,
-                min: 10,
-                max: 50,
-                step: 10,
-                range: 'min',
-                slide: function( event, ui ) {
-                    toggleLogRows(ui.value);
-                }
-            });
+        // Initialize the log slider with the default value
+        var jLogSlider = jPopup.find(".log-slider");
+        if (jLogSlider) {
+            this.toggleLogRows(jLogSlider);
         }
-
-        toggleLogRows(initLevel);
 
         // Once a mini profiler entry is expanded, ask App Engine for its
         // additional request log information.
@@ -371,6 +348,23 @@ window.GaeMiniProfiler = {
         //  B) Most profiler users won't need this data, so we don't want to
         //  use the logservice API unnecessarily.
         this.fetchRequestLog(data);
+    },
+
+
+    toggleLogRows: function(element) {
+        var sliderValue = $(element).val();
+        // round the slider's value to the nearest 10, to match our log levels.
+        var level = Math.floor(sliderValue / 10) * 10;
+        var names = {10:'Debug', 20:'Info', 30:'Warning', 40:'Error', 50:'Critical'};
+        $('#slider .minlevel-text').text(names[level]);
+        $('#slider .loglevel').attr('class', 'loglevel ll'+level);
+        for (var i = 10; i<=50; i += 10) {
+            var rows = $('tr.ll'+i);
+            if (i<level)
+                rows.hide();
+            else
+                rows.show();
+        }
     },
 
     /**
