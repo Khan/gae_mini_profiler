@@ -231,7 +231,9 @@ class Profile(object):
         They can then be loaded into the Chrome profiler and viewed there.
 
         The Chrome .cpuprofile format is a JSON object.  It doesn't seem to be
-        documented anywhere, so here's a bit of documentation:
+        documented anywhere officially, but it seems to be an old format that
+        was previously used by the v8 profiling tools. Here's a bit of
+        documentation:
             The JSON root should be an object with the following keys:
                 * startTime: seconds, with 6 decimals
                 * endTime: likewise
@@ -257,12 +259,20 @@ class Profile(object):
                 * deoptReason: a string to be displayed as a reason this isn't
                     optimized (optional, can be empty)
                 * id: a number, generally in depth-first order
+
+
+        Various profiling tools have written code to convert this old profile
+        format to the newer format used by v8, see the links below for examples
+        that might be helpful if and when we want to update this format.
+
+        https://github.com/jlfwong/speedscope/blob/30ca6291ca93557e2bb77a2bafc5bac580627102/src/import/v8cpuFormatter.ts
+        https://github.com/moar-things/moar-profile-viewer/blob/346c79efca6765162783ab1a60aa3f4576719e4e/lib/profile/convert-v8-to-12.js
         """
         if not self.samples:
             return "{}"
         call_tree, sample_ids = Profile._call_tree(self.samples)
         return json.dumps({
-            "startTime": self.samples[0].timestamp_ms / 1000 + 0.01,
+            "startTime": self.samples[0].timestamp_ms / 1000,
             "endTime": self.samples[-1].timestamp_ms / 1000,
             "head": Profile._munge_call_tree(None, call_tree),
             "samples": sample_ids,
