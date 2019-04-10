@@ -316,7 +316,7 @@ class RequestStats(object):
     serialized_properties = ["request_id", "url",
                              "profiler_results", "appstats_results", "mode",
                              "temporary_redirect", "logs",
-                             "logging_request_id"]
+                             "logging_request_id", "stackdriver_trace_id"]
 
     def __init__(self, profiler, environ):
         # unique mini profiler request id
@@ -329,6 +329,12 @@ class RequestStats(object):
         self.url = environ.get("PATH_INFO")
         if environ.get("QUERY_STRING"):
             self.url += "?%s" % environ.get("QUERY_STRING")
+
+        # The format of the cloud trace header is documented here:
+        # https://cloud.google.com/trace/docs/troubleshooting#force-trace
+        # We expect to look like TRACE_ID/SPAN_ID;o=TRACE_TRUE
+        cloud_trace_context = environ.get("HTTP_X_CLOUD_TRACE_CONTEXT")
+        self.stackdriver_trace_id = cloud_trace_context.split("/")[0]
 
         self.mode = profiler.mode
         self.start_dt = datetime.datetime.now()
