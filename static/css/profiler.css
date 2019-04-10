@@ -207,7 +207,15 @@
 }
 
 .g-m-p .appstats-link {
-    float:right;
+    text-align: right;
+}
+
+.g-m-p .stackdriver-link {
+    text-align:right;
+}
+
+.g-m-p .stackdriver-link .help-popup{
+    display: inline-block;
 }
 
 .g-m-p .redirect {
@@ -391,11 +399,11 @@
     width: 400px
 }
 
-.g-m-p .sampling-profiler-help-popup {
+.g-m-p .help-popup {
     display:inline-block
 }
 
-.g-m-p .sampling-profiler-help-text {
+.g-m-p .help-text {
     display: none;
     max-width: 380px;
     border: 2px solid #ddd;
@@ -408,7 +416,7 @@
     right: 10px;
 }
 
-.g-m-p .sampling-profiler-help-popup:hover .sampling-profiler-help-text {
+.g-m-p .help-popup:hover .help-text {
     display: block;
 }
 

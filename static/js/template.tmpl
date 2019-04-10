@@ -189,9 +189,9 @@
                     Download
                 </a> &mdash;
                 Understanding the
-                <div class="sampling-profiler-help-popup" style="display:inline-block">
+                <div class="help-popup" style="display:inline-block">
                     <a href="javascript:void()" class="uses_script">sampled profile</a>
-                    <div class="sampling-profiler-help-text">
+                    <div class="help-text">
                         Cross-reference with
                         {{if GaeMiniProfiler.isRpcEnabled(mode)}}
                             <a target="_appstats" href="/_ah/stats/details?time=${appstats_results.appstats_key}">Appstats</a>
@@ -348,7 +348,30 @@
 
         <div class="rpc-details details fancy-scrollbar" style="display:none;">
 
-            <a class="appstats-link" target="_appstats" href="/_ah/stats/details?time=${appstats_results.appstats_key}">Full Appstats Details</a>
+            <div class="appstats-link">
+              <a target="_appstats" href="/_ah/stats/details?time=${appstats_results.appstats_key}">Full Appstats Details</a>
+            </div>
+
+            <div class="stackdriver-link">
+              {{if stackdriver_trace_id}}
+                <a target="_stackdriver_trace" href="https://console.cloud.google.com/traces/details/${stackdriver_trace_id}">Stackdriver Trace Details</a>
+              {{else}}
+                No Stackdriver Trace Available
+              {{/if}}
+              <div class="help-popup">
+                <a href="javascript:void()" class="uses_script">?</a>
+                <div class="help-text">
+                  Stackdriver Trace automatically traces only a subset of requests, so not every request will
+                  have an associated trace. Traces may also take some time to become available in the Trace
+                  UI. <br>
+                  <br>
+                  You can force a trace to be captured by manually setting the X-Cloud-Trace-Context header.
+                  More details on that can be found in the
+                  <a href="https://cloud.google.com/trace/docs/troubleshooting#force-trace">docs</a>.
+
+                </div>
+              </div>
+            </div>
 
             {{if appstats_results.calls.length}}
             <table class="rpc-service-totals">
