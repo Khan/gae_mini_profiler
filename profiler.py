@@ -335,7 +335,7 @@ class RequestStats(object):
         # We expect to look like TRACE_ID/SPAN_ID;o=TRACE_TRUE
         # TODO(dhruv): have mini profiler automatically set this header for
         # ajax / fetch requests.
-        cloud_trace_context = environ.get("HTTP_X_CLOUD_TRACE_CONTEXT")
+        cloud_trace_context = environ.get("HTTP_X_CLOUD_TRACE_CONTEXT", "")
         self.stackdriver_trace_id = cloud_trace_context.split("/")[0]
 
         self.mode = profiler.mode
