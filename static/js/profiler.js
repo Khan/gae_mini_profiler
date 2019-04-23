@@ -481,7 +481,7 @@ window.GaeMiniProfiler = {
                 fFirst = true;
             }
 
-            perfClass = "";
+            var perfClass = "";
             if (data.profiler_results.total_time > 1000) {
                 perfClass = "very-slow"
             } else if (data.profiler_results.total_time > 500) {
